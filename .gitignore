@@ -1,0 +1,6 @@
+# pychon compiled files
+*.pyc
+
+# vim ignore
+*.swp
+*.swo
