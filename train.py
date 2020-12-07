@@ -7,6 +7,7 @@ from datetime import datetime
 from config import parse_arguments
 from datasets import VOCdatasets, COCOdatasets
 from models.resnet import resnet50
+from models.pixpro import PixPro
 
 from tensorboardX import SummaryWriter
 
@@ -25,35 +26,50 @@ def main(args):
 
     log_dir = os.path.join(args.log_dir, folder_name)
     checkpoint_dir = os.path.join(args.checkpoint_dir, folder_name)
-    pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
-    pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
+    #pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
+    #pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
     print('[*] log directory: ', log_dir)
     print('[*] checkpoint directory: ', checkpoint_dir)
     
     # log file
     f = open(os.path.join(log_dir, 'arguments.txt'), 'w')
-    f.write(str(args))
+    #f.write(str(args))
     f.close()
-    
 
     print('[*] prepare datasets & dataloader ...')
-    train_datasets = VOCdatasets()
-    test_datasets = VOCdatasets()
+    transform = transforms.Compose([
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.6, 0.6, 0.6, 0.2)],
+            p=0.6),
+        GaussianBlur(prob=0.5, mag=3),
+        Solarize(prob=0.5, mag=0.5),
+        transforms.ToTensor()
+        ])
 
-    train_loader = torch.utils.data.DataLoader(train_datasets, 
-                    batch_size=args.batch_size, 
-                    num_workers = args.workers,
-                    pin_memory=True,
-                    shuffle=True)
-    
-    test_loader = torch.utils.data.DataLoader(test_datasets,
-                    batch_size=args.batch_size,
-                    num_workers = args.workers,
-                    pin_memory=True,
+    dataset = datasets.ImageFolder('./data', train=True, download=True, 
+                                transform= PixProDataTransform(transform))
+
+    loader = DataLoader(dataset, batch_size=args.batch_size,
+                    num_workers=4, pin_memory=True, 
                     shuffle=True)
     
     print('[*] build model ...')
-
+    model = PixPro(
+                encoder=resnet50, 
+                dim_1 = args.pcl_dim_1, 
+                dim_2 = args.pcl_dim_2, 
+                momentum = args.encoder_momentum, 
+                temperature = args.,
+                sharpness = args.sharpness ,
+                num_linear = args.num_linear,
+                )
+     
+    for epoch in range(args.epochs):
+        train(args, train_loader, model, device, writer, 
+                optimizer, criterion, log_dir, checkpoint_dir)
+        test(args, loader, model, device, writer, log_dir, checkpoint_dir)
 
 if __name__ == '__main__':
     argv = parse_arguments(sys.argv[1:])
