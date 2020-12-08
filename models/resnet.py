@@ -149,7 +149,7 @@ class ResNet(nn.Module):
         )
         self.proj_2 = nn.Sequential(
             nn.Conv2d(dim1, dim2, kernel_size=1),
-            norm_layer(dim1),
+            norm_layer(dim2),
             nn.ReLU(inplace=True)
         )
 
@@ -199,8 +199,8 @@ class ResNet(nn.Module):
         x = self.layer4(x)
 
         x = self.proj_1(x)
+        print(x.shape)
         x = self.proj_2(x)
-
         #x = self.avgpool(x)
 
         return x

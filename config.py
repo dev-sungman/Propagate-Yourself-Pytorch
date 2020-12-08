@@ -12,7 +12,7 @@ def parse_arguments(argv):
 
     ##### Training Parameter
     # image path
-    parser.add_argument('--train_path', type=str, default='imgs')
+    parser.add_argument('--train_path', type=str, default='/workspace/scripts/kakaobrain-homework/imgs')
     parser.add_argument('--valid_path', type=str, default=None)
     # input image size
     parser.add_argument('--image_size', type=int, default=224)
@@ -39,7 +39,7 @@ def parse_arguments(argv):
     
     ##### Pixel contrast
     # pixel contrast threshold
-    parser.add_argument('--pc_tresh', type=float, default=0.7) 
+    parser.add_argument('--threshold', type=float, default=0.7) 
 
 
     ##### Pixel Propagation Module
