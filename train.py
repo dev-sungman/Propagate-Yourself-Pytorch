@@ -5,7 +5,7 @@ import pathlib
 from datetime import datetime
 
 from config import parse_arguments
-from datasets import VOCdatasets, COCOdatasets
+from datasets import PixProDataset
 from models.resnet import resnet50
 from models.pixpro import PixPro
 
@@ -15,7 +15,14 @@ import torch
 import torch.nn as nn
 import torchvision
 
-def main(args):
+def train(args, loader, model, device, writer, optimizer, criterion, log_dir, checkpoint_dir):
+    
+    #for (i1,i2), (p1,p2), (f1,f2) in loader:
+        
+
+
+
+def main(args)
     print('[*] Propagate Yourself-pytorch'
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print('[*] device: ', device)
@@ -36,24 +43,15 @@ def main(args):
     #f.write(str(args))
     f.close()
 
-    print('[*] prepare datasets & dataloader ...')
-    transform = transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomApply([
-            transforms.ColorJitter(0.6, 0.6, 0.6, 0.2)],
-            p=0.6),
-        GaussianBlur(prob=0.5, mag=3),
-        Solarize(prob=0.5, mag=0.5),
-        transforms.ToTensor()
-        ])
-
-    dataset = datasets.ImageFolder('./data', train=True, download=True, 
-                                transform= PixProDataTransform(transform))
+    dataset = PixProDataset(root=args.train_path)
+    if args.distributed:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+    else:
+        train_sampler = None
 
     loader = DataLoader(dataset, batch_size=args.batch_size,
-                    num_workers=4, pin_memory=True, 
-                    shuffle=True)
+                    num_workers=4, pin_memory=True, sampler=train_sampler,
+                    shuffle=True, drop_last=True)
     
     print('[*] build model ...')
     model = PixPro(
@@ -67,9 +65,8 @@ def main(args):
                 )
      
     for epoch in range(args.epochs):
-        train(args, train_loader, model, device, writer, 
+        train(args, loader, model, device, writer, 
                 optimizer, criterion, log_dir, checkpoint_dir)
-        test(args, loader, model, device, writer, log_dir, checkpoint_dir)
 
 if __name__ == '__main__':
     argv = parse_arguments(sys.argv[1:])

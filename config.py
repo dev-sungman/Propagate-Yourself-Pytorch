@@ -8,10 +8,11 @@ def parse_arguments(argv):
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints')
     parser.add_argument('--log_dir', type=str, default='runs')
     parser.add_argument('--msg', type=str, default=None)
+    parser.add_argument('--distributed', default=False, action='store_true')
 
     ##### Training Parameter
     # image path
-    parser.add_argument('--train_path', type=str, default=None)
+    parser.add_argument('--train_path', type=str, default='imgs')
     parser.add_argument('--valid_path', type=str, default=None)
     # input image size
     parser.add_argument('--image_size', type=int, default=224)

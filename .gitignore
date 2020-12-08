@@ -1,9 +1,10 @@
 #
-data/
+imgs/
 __pycache__/
 
 # pychon compiled files
 *.pyc
+*.png
 
 # vim ignore
 *.swp
