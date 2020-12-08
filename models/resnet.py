@@ -199,7 +199,6 @@ class ResNet(nn.Module):
         x = self.layer4(x)
 
         x = self.proj_1(x)
-        print(x.shape)
         x = self.proj_2(x)
         #x = self.avgpool(x)
 

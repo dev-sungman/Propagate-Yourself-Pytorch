@@ -17,13 +17,18 @@ import torch.nn as nn
 import torchvision
 from torch.utils.data import DataLoader
 
+
 def train(args, loader, model, device, writer, optimizer, criterion, log_dir, checkpoint_dir):
-    for (i1,i2), (p1,p2), (f1,f2) in loader:
-        x1, x2, y = model(i1, i2, p1, p2, f1, f2)
-        
+    for images, pos, flips in loader:
+        x_base, x_moment, y = model(images[0], images[1], pos[0], pos[1], flips[0], flips[1])
         # Compute Pixel Contrastive
         # Compute PixPro
-        print(x1.shape, x2.shape, y.shape)
+        
+        ### FOR DEBUGGING!!!
+        bm, mm = model._get_feature_position_matrix(pos[0], pos[1], (7,7))
+        inter_rect = model._get_intersection_rect(pos[0], pos[1])
+        model.draw_for_debug(pos[0], pos[1], inter_rect, images[0], images[1], bm, mm)
+
         raise
 
 
