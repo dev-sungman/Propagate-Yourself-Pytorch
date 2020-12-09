@@ -50,23 +50,67 @@ class PixPro(nn.Module):
         moment = self.moment_encoder(x2)
         assert base.shape == moment.shape, 'base, moment shape must be same' 
         feature_map_size = (base.shape[2], base.shape[3])
+
+        # warped to the original image space
         base_position_matrix, moment_position_matrix = self._get_feature_position_matrix(p_base, p_moment, feature_map_size)
-        
-        # postiion matrix 받아오는 부분을 numpy 로 변환하고 밑에 코드 수정해야함.
-        # _get_A_matrix 에서는 문제 없음. 
         inter_rect = self._get_intersection_rect(p_base, p_moment)
 
-        inter_mask_1 = self._get_intersection_features(base_position_matrix, inter_rect, feature_map_size)
-        inter_mask_2 = self._get_intersection_features(moment_position_matrix, inter_rect, feature_map_size)
+        base_inter_mask = self._get_intersection_features(base_position_matrix, inter_rect, feature_map_size)
+        moment_inter_mask = self._get_intersection_features(moment_position_matrix, inter_rect, feature_map_size)
         
         # befor compute A matrix, check the filp flag
-
+        if f_base.item() is True:
+            base_position_matrix = np.fliplr(base_position_matrix)
+        if f_moment.item() is True:
+            moment_position_matrix = np.fliplr(moment_position_matrix)
+        
+        # get A matrix
         base_A_matrix, moment_A_matrix = self._get_A_matrix(base_position_matrix, moment_position_matrix, p_base, p_moment)
+        
+        base_loss = self._compute_pixpro_loss(base, moment, base_A_matrix, moment_A_matrix)
+        moment_loss = self._compute_pixpro_loss(moment, base, moment_A_matrix, base_A_matrix)
+        #self._compute_pix_contrast_loss(base_inter_mask, base, moment, base_A_matrix)
 
-        return base, moment, y
+        return base, moment, y, -base_loss-moment_loss
     
-    #def _compute_pix_contrast_loss(self, inter_mask, A_matrix
+    def _compute_pixpro_loss(self, base_feature, moment_feature, base_A_matrix, moment_A_matrix):
+        cos_sim = 0
+        for i in range(base_feature.shape[2]):
+            for j in range(base_feature.shape[3]):
+                y_i = base_feature[:,:, i, j]
+
+                for k in range(moment_feature.shape[2]):
+                    for l in range(moment_feature.shape[3]):
+                        x_j = moment_feature[:, :, k, l]
+
+                        if base_A_matrix[i, j, k, l] == 1:
+                            cos_sim += self._compute_cosine_similarity(y_i, x_j)
+
+
+        return cos_sim / (base_feature.shape[2] * base_feature.shape[3] * moment_feature.shape[2] * moment_feature.shape[3])
+    '''
+    def _compute_pix_contrast_loss(self, inter_mask, base_feature, moment_feature, A_matrix):
+        remain_fm = inter_mask * base_feature
+        
+        for i in range(base_feature.shape[2]):
+            for j in range(base_feature.shape[3]):
+                x_i = base_feature[:,:, i, j]
+
+                for k in range(moment_feature.shape[2]):
+                    for l in range(moment_feature.shape[3]):
+                        if A_matirx[i, j, k, l] == 1:
+                            cos_sim = self._compute_cosine_similarity(base_feature[:,:,i,j], moment_feature[:,:,k,l])
+                            print(cos_sim)
+                            raise
+    '''
     
+    
+    def _compute_cosine_similarity(self, m1, m2):
+        cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+        cos_sim = cos(m1, m2)
+        return cos_sim
+
+
     def _get_feature_position_matrix(self, p_base, p_moment, size):
         """
         To get base_matrix, moment_matrix position information, A_matrix for postivie, negative mask
@@ -104,6 +148,8 @@ class PixPro(nn.Module):
             ny1 = ny1 + rh1
             ny2 = ny2 + rh2
         
+        base_matrix = np.array(base_matrix).reshape((size[0], size[1], 2))
+        moment_matrix = np.array(moment_matrix).reshape((size[0], size[1], 2))
 
         return base_matrix, moment_matrix
 
@@ -119,20 +165,24 @@ class PixPro(nn.Module):
 
         return base_A_matrix, moment_A_matrix
 
-    def _get_normalized_distance(self, l1, l2, diag_len):
+    def _get_normalized_distance(self, base, moment, diag_len):
         """
         To get normalized distance between feature maps
-        l1 : feature map poistion list (base)
-        l2 : feature map position list (moment)
+        base : feature map poistion 
+        moment : feature map position
         diag_len : l1's diagonal length for normalization.
         """
-        A_matrix = []
-        for i in l1:
-            for j in l2:
-                dist = (torch.sqrt(((i[0]-j[0])**2) + ((i[1]-j[1])**2))) / diag_len
-                mask = 1 if dist < self.threshold else 0
-                A_matrix.append(mask)
-        A_matrix = np.array(A_matrix).reshape((len(l1), len(l2)))
+        
+        A_matrix = np.zeros((base.shape[0],base.shape[1],moment.shape[0],moment.shape[1]))
+        
+        for i in range(base.shape[0]):
+            for j in range(base.shape[1]):
+                for k in range(moment.shape[0]):
+                    for l in range(moment.shape[1]):
+                        dist = np.sqrt(((base[i,j,0]-moment[k,l,0])**2) + ((base[i,j,1]-moment[k,l,1])**2)) / diag_len
+                        mask = 1 if dist < self.threshold else 0
+                        A_matrix[i,j,k,l] = mask
+        A_matrix = A_matrix.reshape(base.shape[0], base.shape[1], moment.shape[0], moment.shape[1])
         return A_matrix        
     
     def _get_intersection_rect(self, p_base, p_moment):
@@ -157,7 +207,6 @@ class PixPro(nn.Module):
         x : feature map (position)
         area : intersection area (x1, y1, x2, y2)
         """
-        x = np.array(x).reshape((size[0], size[1], 2))
         intersection_mask = torch.zeros((x.shape[0], x.shape[1]))
         
         x_list = []
@@ -170,9 +219,7 @@ class PixPro(nn.Module):
                     y_list.append(ny) # for box
                     intersection_mask[i][j] = 1
 
-        print(intersection_mask) 
         intersection_box = (min(x_list), max(x_list), min(y_list), max(y_list))
-        print(intersection_box)
         return intersection_mask 
 
 

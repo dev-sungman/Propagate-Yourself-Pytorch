@@ -14,10 +14,10 @@ class PixProDataset(Dataset):
         
         self.transform = transforms.Compose([
             transforms.RandomApply([
-                transforms.ColorJitter(0.6, 0.6, 0.6, 0.2)],
+                transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)],
                 p=0.6),
-            GaussianBlur(prob=0.5, mag=3),
-            Solarize(prob=0.5, mag=0.5),
+            GaussianBlur(prob=0.3, mag=3),
+            Solarize(prob=0.3, mag=0.5),
             transforms.ToTensor()
         ])
 
@@ -54,7 +54,7 @@ class PixProDataset(Dataset):
         sample = self._load_image(path)
 
         sample1, x1, y1, w1, h1 = RandomResizedCrop(self.data_size)(sample)
-        sample1, is_flip1 = RandomHorizontalFlip(p=0.5)(sample1)
+        sample1, is_flip1 = RandomHorizontalFlip(p=1.0)(sample1)
         sample1 = self.transform(sample1)
 
         sample2, x2, y2, w2, h2 = RandomResizedCrop(self.data_size)(sample)

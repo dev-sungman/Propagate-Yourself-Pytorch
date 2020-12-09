@@ -18,19 +18,29 @@ import torchvision
 from torch.utils.data import DataLoader
 
 
-def train(args, loader, model, device, writer, optimizer, criterion, log_dir, checkpoint_dir):
-    for images, pos, flips in loader:
-        x_base, x_moment, y = model(images[0], images[1], pos[0], pos[1], flips[0], flips[1])
+def train(args, loader, model, device, writer, optimizer, criterion, log_dir, checkpoint_dir, overall_iter):
+    running_loss = 0
+
+    for _iter, (images, pos, flips) in enumerate(loader):
+        x_base, x_moment, y, pixpro_loss = model(images[0], images[1], pos[0], pos[1], flips[0], flips[1])
         # Compute Pixel Contrastive
-        # Compute PixPro
         
-        ### FOR DEBUGGING!!!
-        bm, mm = model._get_feature_position_matrix(pos[0], pos[1], (7,7))
-        inter_rect = model._get_intersection_rect(pos[0], pos[1])
-        model.draw_for_debug(pos[0], pos[1], inter_rect, images[0], images[1], bm, mm)
+        overall_loss = pixpro_loss
+        running_loss += overall_loss.item()
 
-        raise
 
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        if (_iter % args.print_freq == 0) & (_iter != 0):
+            print('Overall iter: {:5d}, Loss: {:5f}'.format(overall_iter, running_loss/_iter))
+            writer.add_scalar('train loss', running_loss/_iter, overall_iter)
+
+        ### FOR DEBUGGING (visualize) !!!
+        #bm, mm = model._get_feature_position_matrix(pos[0], pos[1], (7,7))
+        #inter_rect = model._get_intersection_rect(pos[0], pos[1])
+        #model.draw_for_debug(pos[0], pos[1], inter_rect, images[0], images[1], bm, mm)
 
 
 def main(args):
@@ -85,10 +95,16 @@ def main(args):
     criterion = None
     
     print('[*] start training ...')
+    _iter = 0
     for epoch in range(args.epochs):
         train(args, loader, model, device, writer, 
-                optimizer, criterion, log_dir, checkpoint_dir)
-        raise
+                optimizer, criterion, log_dir, checkpoint_dir, _iter)
+        torch.save(model.state_dict(), os.path.join(checkpoint_dir, str(overall_iter)) +'.pth')
+
+        _iter += 1
+
+    print('[*] finished !')
+
 if __name__ == '__main__':
     argv = parse_arguments(sys.argv[1:])
     main(argv)

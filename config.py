@@ -9,6 +9,7 @@ def parse_arguments(argv):
     parser.add_argument('--log_dir', type=str, default='runs')
     parser.add_argument('--msg', type=str, default=None)
     parser.add_argument('--distributed', default=False, action='store_true')
+    parser.add_argument('--print_freq', type=int, default=1000)
 
     ##### Training Parameter
     # image path
