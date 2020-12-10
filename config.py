@@ -4,12 +4,21 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser()
 
     ##### Base settings
-    parser.add_argument('--dataset', type=str, default=None)
+    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--resume', type=str, default='', metavar='PATH')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints')
     parser.add_argument('--log_dir', type=str, default='runs')
-    parser.add_argument('--msg', type=str, default=None)
-    parser.add_argument('--distributed', default=False, action='store_true')
+    parser.add_argument('--msg', type=str, default='')
     parser.add_argument('--print_freq', type=int, default=1000)
+    parser.add_argument('--start_epoch', type=int, default=0)
+    
+    ##### Distributed Training
+    parser.add_argument('--world_size', type=int, default=1)
+    parser.add_argument('--rank', type=int, default=0)
+    parser.add_argument('--dist_url', type=str, default='tcp://localhost:10001')
+    parser.add_argument('--dist-backend', type=str, default='nccl')
+    parser.add_argument('--multiprocessing-distributed', default=False, action='store_true')
+    parser.add_argument('--gpu', type=int, default=None)
 
     ##### Training Parameter
     # image path
@@ -27,6 +36,7 @@ def parse_arguments(argv):
     parser.add_argument('--weight_decay', type=float, default=1e-5)
     # loss weights (for combining with instance contrast)
     parser.add_argument('--inst_weight', type=int, default=1)
+    parser.add_argument('--workers', type=int, default=32)
     
     ##### Encoder + Projection
     # temperature
