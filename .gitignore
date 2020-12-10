@@ -9,3 +9,7 @@ __pycache__/
 # vim ignore
 *.swp
 *.swo
+
+
+runs/
+checkpoints/
