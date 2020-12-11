@@ -33,14 +33,14 @@ def main(args):
     args.log_dir = os.path.join(args.log_dir, folder_name)
     args.checkpoint_dir = os.path.join(args.checkpoint_dir, folder_name)
     pathlib.Path(args.log_dir).mkdir(parents=True, exist_ok=True)
-    pathlib.Path(args.log_dir).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(args.checkpoint_dir).mkdir(parents=True, exist_ok=True)
     print('[*] log directory: ', args.log_dir)
     print('[*] checkpoint directory: ', args.checkpoint_dir)
     
     # log file
-    #f = open(os.path.join(args.log_dir, 'arguments.txt'), 'w')
-    #f.write(str(args))
-    #f.close()
+    f = open(os.path.join(args.log_dir, 'arguments.txt'), 'w')
+    f.write(str(args))
+    f.close()
     
     if args.seed is not None:
         random.seed(args.seed)

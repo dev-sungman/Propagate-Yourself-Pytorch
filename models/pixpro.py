@@ -51,58 +51,62 @@ class PixPro(nn.Module):
         assert base.shape == moment.shape, 'base, moment shape must be same' 
         feature_map_size = (base.shape[2], base.shape[3])
         
-        print(base.shape, moment.shape, len(p_base), len(p_moment), f_base.shape, f_moment.shape)
         # compute loss 
         overall_loss = 0
+        iter_ = 0
         for batch in range(x1.shape[0]):
-            base = base[batch, :, :, :]
-            moment = moment[batch, :, :, :]
+            base_batch = base[batch, :, :, :]
+            moment_batch = moment[batch, :, :, :]
 
-            p_base = p_base[batch, :, :, :]
-            p_moment = p_moment[batch, :, :, :]
+            p_base_batch = p_base[batch]
+            p_moment_batch = p_moment[batch]
 
-            f_base = f_base[batch]
-            f_moment = f_moment[batch]
+            f_base_batch = f_base[batch]
+            f_moment_batch = f_moment[batch]
 
             # warped to the original image space
-            base_position_matrix, moment_position_matrix = self._get_feature_position_matrix(p_base, p_moment, feature_map_size)
-            inter_rect = self._get_intersection_rect(p_base, p_moment)
-
+            base_position_matrix, moment_position_matrix = self._get_feature_position_matrix(p_base_batch, p_moment_batch, feature_map_size)
+            inter_rect = self._get_intersection_rect(p_base_batch, p_moment_batch)
+            
             base_inter_mask = self._get_intersection_features(base_position_matrix, inter_rect, feature_map_size)
             moment_inter_mask = self._get_intersection_features(moment_position_matrix, inter_rect, feature_map_size)
             
             # befor compute A matrix, check the filp flag
-            if f_base.item() is True:
-                base_position_matrix = np.fliplr(base_position_matrix)
-            if f_moment.item() is True:
-                moment_position_matrix = np.fliplr(moment_position_matrix)
+            if base_inter_mask is not None and moment_inter_mask is not None:
+                if f_base_batch.item() is True:
+                    base_position_matrix = np.fliplr(base_position_matrix)
+                if f_moment_batch.item() is True:
+                    moment_position_matrix = np.fliplr(moment_position_matrix)
             
-            # get A matrix
-            base_A_matrix, moment_A_matrix = self._get_A_matrix(base_position_matrix, moment_position_matrix, p_base, p_moment)
+                # get A matrix
+                base_A_matrix = self._get_A_matrix(base_position_matrix, moment_position_matrix, p_base_batch)
+                moment_A_matrix = self._get_A_matrix(moment_position_matrix, base_position_matrix, p_moment_batch)
             
-            base_loss = self._compute_pixpro_loss(base, moment, base_A_matrix, moment_A_matrix)
-            moment_loss = self._compute_pixpro_loss(moment, base, moment_A_matrix, base_A_matrix)
-            #self._compute_pix_contrast_loss(base_inter_mask, base, moment, base_A_matrix)
+                base_loss = self._compute_pixpro_loss(base_batch, moment_batch, base_A_matrix, moment_A_matrix)
+                moment_loss = self._compute_pixpro_loss(moment_batch, base_batch, moment_A_matrix, base_A_matrix)
+            
+                #self._compute_pix_contrast_loss(base_inter_mask, base, moment, base_A_matrix)
 
-            overall_loss += (-base_loss-moment_loss)
+                overall_loss += (-base_loss-moment_loss)
+                iter_ += 1
 
-        return base, moment, y, overall_loss/batch
+        return base, moment, y, overall_loss/iter_
     
     def _compute_pixpro_loss(self, base_feature, moment_feature, base_A_matrix, moment_A_matrix):
         cos_sim = 0
-        for i in range(base_feature.shape[2]):
-            for j in range(base_feature.shape[3]):
-                y_i = base_feature[:,:, i, j]
+        for i in range(base_feature.shape[1]):
+            for j in range(base_feature.shape[2]):
+                y_i = base_feature[:, i, j]
 
-                for k in range(moment_feature.shape[2]):
-                    for l in range(moment_feature.shape[3]):
-                        x_j = moment_feature[:, :, k, l]
+                for k in range(moment_feature.shape[1]):
+                    for l in range(moment_feature.shape[2]):
+                        x_j = moment_feature[:, k, l]
 
                         if base_A_matrix[i, j, k, l] == 1:
                             cos_sim += self._compute_cosine_similarity(y_i, x_j)
 
 
-        return cos_sim / (base_feature.shape[2] * base_feature.shape[3] * moment_feature.shape[2] * moment_feature.shape[3])
+        return cos_sim / (base_feature.shape[1] * base_feature.shape[2] * moment_feature.shape[1] * moment_feature.shape[2])
     '''
     def _compute_pix_contrast_loss(self, inter_mask, base_feature, moment_feature, A_matrix):
         remain_fm = inter_mask * base_feature
@@ -121,7 +125,7 @@ class PixPro(nn.Module):
     
     
     def _compute_cosine_similarity(self, m1, m2):
-        cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+        cos = nn.CosineSimilarity(dim=0, eps=1e-6)
         cos_sim = cos(m1, m2)
         return cos_sim
 
@@ -168,17 +172,14 @@ class PixPro(nn.Module):
 
         return base_matrix, moment_matrix
 
-    def _get_A_matrix(self, base_pm, moment_pm, p_base, p_moment):
+    def _get_A_matrix(self, base_pm, moment_pm, p_base):
         x1, y1, w1, h1 = p_base
-        x2, y2, w2, h2 = p_moment
         
         base_diag_len = torch.sqrt((w1.float()**2) + (h1.float()**2))
-        moment_diag_len = torch.sqrt((w2.float()**2) + (h2.float()**2))
         
         base_A_matrix = self._get_normalized_distance(base_pm, moment_pm, base_diag_len)
-        moment_A_matrix = self._get_normalized_distance(base_pm, moment_pm, moment_diag_len)
 
-        return base_A_matrix, moment_A_matrix
+        return base_A_matrix
 
     def _get_normalized_distance(self, base, moment, diag_len):
         """
@@ -194,7 +195,7 @@ class PixPro(nn.Module):
             for j in range(base.shape[1]):
                 for k in range(moment.shape[0]):
                     for l in range(moment.shape[1]):
-                        dist = np.sqrt(((base[i,j,0]-moment[k,l,0])**2) + ((base[i,j,1]-moment[k,l,1])**2)) / diag_len
+                        dist = torch.sqrt(((base[i,j,0]-moment[k,l,0])**2) + ((base[i,j,1]-moment[k,l,1])**2)) / diag_len
                         mask = 1 if dist < self.threshold else 0
                         A_matrix[i,j,k,l] = mask
         A_matrix = A_matrix.reshape(base.shape[0], base.shape[1], moment.shape[0], moment.shape[1])
@@ -206,9 +207,10 @@ class PixPro(nn.Module):
         p_base : feature map poistion list (base)
         p_moment : feature map position list (moment)
         """
+        has_intersection = True
+
         x1, y1, w1, h1 = p_base
         x2, y2, w2, h2 = p_moment
-        
         xA = max(x1, x2)
         yA = max(y1, y2)
         xB = min(x1+w1, x2+w2)
@@ -233,8 +235,11 @@ class PixPro(nn.Module):
                     x_list.append(nx) # for box
                     y_list.append(ny) # for box
                     intersection_mask[i][j] = 1
-
-        intersection_box = (min(x_list), max(x_list), min(y_list), max(y_list))
+        
+        if len(x_list) > 0 and len(y_list) > 0:
+            intersection_box = (min(x_list), max(x_list), min(y_list), max(y_list))
+        else:
+            intersection_box = None
         return intersection_mask 
 
 

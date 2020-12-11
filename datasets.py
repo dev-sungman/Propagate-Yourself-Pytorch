@@ -63,8 +63,6 @@ class PixProDataset(Dataset):
         
         targets = torch.FloatTensor(np.array([x1, y1, w1, h1, x2, y2, w2, h2, is_flip1, is_flip2]))
 
-        #print(sample1.shape, sample2.shape, point1.shape, point2.shape, is_flip1.shape, is_flip2.shape)
-        #return sample1, sample2, point1, point2, is_flip1, is_flip2
         return (sample1, sample2), targets
     
 

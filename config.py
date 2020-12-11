@@ -9,7 +9,7 @@ def parse_arguments(argv):
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints')
     parser.add_argument('--log_dir', type=str, default='runs')
     parser.add_argument('--msg', type=str, default='')
-    parser.add_argument('--print_freq', type=int, default=1000)
+    parser.add_argument('--print_freq', type=int, default=300)
     parser.add_argument('--start_epoch', type=int, default=0)
     
     ##### Distributed Training
@@ -36,7 +36,7 @@ def parse_arguments(argv):
     parser.add_argument('--weight_decay', type=float, default=1e-5)
     # loss weights (for combining with instance contrast)
     parser.add_argument('--inst_weight', type=int, default=1)
-    parser.add_argument('--workers', type=int, default=32)
+    parser.add_argument('--workers', type=int, default=48)
     
     ##### Encoder + Projection
     # temperature
