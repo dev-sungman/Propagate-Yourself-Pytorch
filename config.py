@@ -22,7 +22,7 @@ def parse_arguments(argv):
 
     ##### Training Parameter
     # image path
-    parser.add_argument('--train_path', type=str, default='/workspace/scripts/kakaobrain-homework/imgs')
+    parser.add_argument('--train_path', type=str, default='/data/opensets/imagenet-pytorch/train')
     parser.add_argument('--valid_path', type=str, default=None)
     # input image size
     parser.add_argument('--image_size', type=int, default=224)
