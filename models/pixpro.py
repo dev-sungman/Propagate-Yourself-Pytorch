@@ -37,8 +37,8 @@ class PixPro(nn.Module):
 
     def forward(self, x1, x2, p_base, p_moment, f_base, f_moment):
         """
-        base      : base feature map    --> (7,7)
-        moment    : moment feature map  --> (7,7)
+        base      : base feature map    --> (B, C, 7,7)
+        moment    : moment feature map  --> (B, C, 7,7)
         p_base    : base position       --> (x, y, w, h)
         p_moment  : moment position     --> (x, y, w, h)
         f_base    : is base fliped ?    --> True / False
@@ -50,28 +50,43 @@ class PixPro(nn.Module):
         moment = self.moment_encoder(x2)
         assert base.shape == moment.shape, 'base, moment shape must be same' 
         feature_map_size = (base.shape[2], base.shape[3])
-
-        # warped to the original image space
-        base_position_matrix, moment_position_matrix = self._get_feature_position_matrix(p_base, p_moment, feature_map_size)
-        inter_rect = self._get_intersection_rect(p_base, p_moment)
-
-        base_inter_mask = self._get_intersection_features(base_position_matrix, inter_rect, feature_map_size)
-        moment_inter_mask = self._get_intersection_features(moment_position_matrix, inter_rect, feature_map_size)
         
-        # befor compute A matrix, check the filp flag
-        if f_base.item() is True:
-            base_position_matrix = np.fliplr(base_position_matrix)
-        if f_moment.item() is True:
-            moment_position_matrix = np.fliplr(moment_position_matrix)
-        
-        # get A matrix
-        base_A_matrix, moment_A_matrix = self._get_A_matrix(base_position_matrix, moment_position_matrix, p_base, p_moment)
-        
-        base_loss = self._compute_pixpro_loss(base, moment, base_A_matrix, moment_A_matrix)
-        moment_loss = self._compute_pixpro_loss(moment, base, moment_A_matrix, base_A_matrix)
-        #self._compute_pix_contrast_loss(base_inter_mask, base, moment, base_A_matrix)
+        print(base.shape, moment.shape, len(p_base), len(p_moment), f_base.shape, f_moment.shape)
+        # compute loss 
+        overall_loss = 0
+        for batch in range(x1.shape[0]):
+            base = base[batch, :, :, :]
+            moment = moment[batch, :, :, :]
 
-        return base, moment, y, -base_loss-moment_loss
+            p_base = p_base[batch, :, :, :]
+            p_moment = p_moment[batch, :, :, :]
+
+            f_base = f_base[batch]
+            f_moment = f_moment[batch]
+
+            # warped to the original image space
+            base_position_matrix, moment_position_matrix = self._get_feature_position_matrix(p_base, p_moment, feature_map_size)
+            inter_rect = self._get_intersection_rect(p_base, p_moment)
+
+            base_inter_mask = self._get_intersection_features(base_position_matrix, inter_rect, feature_map_size)
+            moment_inter_mask = self._get_intersection_features(moment_position_matrix, inter_rect, feature_map_size)
+            
+            # befor compute A matrix, check the filp flag
+            if f_base.item() is True:
+                base_position_matrix = np.fliplr(base_position_matrix)
+            if f_moment.item() is True:
+                moment_position_matrix = np.fliplr(moment_position_matrix)
+            
+            # get A matrix
+            base_A_matrix, moment_A_matrix = self._get_A_matrix(base_position_matrix, moment_position_matrix, p_base, p_moment)
+            
+            base_loss = self._compute_pixpro_loss(base, moment, base_A_matrix, moment_A_matrix)
+            moment_loss = self._compute_pixpro_loss(moment, base, moment_A_matrix, base_A_matrix)
+            #self._compute_pix_contrast_loss(base_inter_mask, base, moment, base_A_matrix)
+
+            overall_loss += (-base_loss-moment_loss)
+
+        return base, moment, y, overall_loss/batch
     
     def _compute_pixpro_loss(self, base_feature, moment_feature, base_A_matrix, moment_A_matrix):
         cos_sim = 0

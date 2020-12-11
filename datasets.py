@@ -60,8 +60,14 @@ class PixProDataset(Dataset):
         sample2, x2, y2, w2, h2 = RandomResizedCrop(self.data_size)(sample)
         sample2, is_flip2 = RandomHorizontalFlip(p=0.5)(sample2)
         sample2 = self.transform(sample2)
+        
+        point1 = torch.FloatTensor([x1, y1, w1, h1])
+        point2 = torch.FloatTensor([x2, y2, w2, h2])
 
-        return (sample1, sample2), ((x1,y1,w1,h1), (x2,y2,w2,h2)), (is_flip1, is_flip2)
+        is_flip1 = torch.FloatTensor(is_flip1)
+        is_flip2 = torch.FloatTensor(is_flip2)
+
+        return (sample1, point1, is_flip1), (sample2, point2, is_flip2)
     
 
     def __len__(self):

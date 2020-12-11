@@ -40,9 +40,9 @@ class RandomHorizontalFlip(object):
         self.p = p
 
     def __call__(self, img):
-        is_flip = False
+        is_flip = 0
         if torch.rand(1) < self.p:
-            is_flip=True
+            is_flip=1
             return img.transpose(method=Image.FLIP_LEFT_RIGHT), is_flip
         return img, is_flip
 

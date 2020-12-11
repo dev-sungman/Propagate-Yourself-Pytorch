@@ -151,7 +151,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
 def train(args, loader, model, writer, optimizer, overall_iter):
     running_loss = 0
-    for _iter, (images, pos, flips) in enumerate(loader):
+    for _iter, (data[0], data[1]) in enumerate(loader):
+        images[0], pos[0], flips[0] = data[0]
+        images[1], pos[1], flips[1] = data[1]
+
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
         print(images[0].shape)
         x_base, x_moment, y, pixpro_loss = model(images[0], images[1], pos[0], pos[1], flips[0], flips[1])
