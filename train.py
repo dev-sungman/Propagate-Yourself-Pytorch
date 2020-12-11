@@ -139,7 +139,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
             save_name = '{}.pth.tar'.format(_iter)
-            save_name = os.path.join(checkpoint_dir, save_name)
+            save_name = os.path.join(args.checkpoint_dir, save_name)
             torch.save({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
@@ -151,13 +151,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
 def train(args, loader, model, writer, optimizer, overall_iter):
     running_loss = 0
-    for _iter, (data[0], data[1]) in enumerate(loader):
-        images[0], pos[0], flips[0] = data[0]
-        images[1], pos[1], flips[1] = data[1]
-
+    for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
-        print(images[0].shape)
-        x_base, x_moment, y, pixpro_loss = model(images[0], images[1], pos[0], pos[1], flips[0], flips[1])
+        pos0, pos1, f0, f1 = targets[:, :4], targets[:, 4:8], targets[:,8], targets[:,9]
+        x_base, x_moment, y, pixpro_loss = model(images[0], images[1], pos0, pos1, f0, f1)
         
         overall_loss = pixpro_loss
         running_loss += overall_loss.item()
@@ -169,7 +166,6 @@ def train(args, loader, model, writer, optimizer, overall_iter):
         if (_iter % args.print_freq == 0) & (_iter != 0):
             print('Overall iter: {:5d}, Loss: {:5f}'.format(overall_iter, running_loss/_iter))
             #writer.add_scalar('train loss', running_loss/_iter, overall_iter)
-
         ### FOR DEBUGGING (visualize) !!!
         #bm, mm = model._get_feature_position_matrix(pos[0], pos[1], (7,7))
         #inter_rect = model._get_intersection_rect(pos[0], pos[1])
