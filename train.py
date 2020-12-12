@@ -8,7 +8,8 @@ from config import parse_arguments
 from datasets import PixProDataset
 from models.resnet import resnet50
 from models.pixpro import PixPro
-
+from utils import AverageMeter, ProgressMeter
+from losses import PixproLoss
 from tensorboardX import SummaryWriter
 #from torchlars import LARS
 
@@ -21,7 +22,7 @@ import torchvision
 from torch.utils.data import DataLoader
 
 import random
-
+from torchsummary import summary
 
 def main(args):
     print('[*] PixPro Pytorch')
@@ -89,10 +90,13 @@ def main_worker(gpu, ngpus_per_node, args):
 
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int((args.workers + ngpus_per_node -1) / ngpus_per_node)
+            sync_bn_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+
         else:
             model.cuda()
-            model = torch.nn.parallel.DistributedDataParallel(model)
+            model = torch.nn.parallel.DistributedDataParallel(moel)
+
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
@@ -100,7 +104,6 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         raise NotImplementedError('only DDP is supported.')
 
-    
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr_base, weight_decay=args.weight_decay)
     #base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     #optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
@@ -126,15 +129,13 @@ def main_worker(gpu, ngpus_per_node, args):
     
     scaled_lr = args.lr_base * args.batch_size/256
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 300)    
-    #writer = SummaryWriter(log_dir)
-    writer = None
     
     _iter = 0
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
-        train(args, loader, model, writer, optimizer, _iter)
+        train(args, epoch, loader, model, optimizer, _iter)
         scheduler.step()
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
@@ -149,23 +150,37 @@ def main_worker(gpu, ngpus_per_node, args):
         _iter += 1
 
 
-def train(args, loader, model, writer, optimizer, overall_iter):
+def train(args, epoch, loader, model, optimizer, overall_iter):
+    batch_time = AverageMeter('Time', ':6.3f')
+    losses = AverageMeter('Loss', ':.4e')
+    progress = ProgressMeter(
+        len(loader),
+        [batch_time, losses],
+        prefix='Epoch: [{}]'.format(epoch))
     running_loss = 0
+
+    end = time.time()
     for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
+        targets = targets.cuda(args.gpu, non_blocking=True)
         pos0, pos1, f0, f1 = targets[:, :4], targets[:, 4:8], targets[:,8], targets[:,9]
-        x_base, x_moment, y, pixpro_loss = model(images[0], images[1], pos0, pos1, f0, f1)
         
-        overall_loss = pixpro_loss
-        running_loss += overall_loss.item()
+        y, x_moment = model(images[0], images[1])
+        
+        pixpro_loss = PixproLoss(args)
+        overall_loss = pixpro_loss(y, x_moment, pos0, pos1, f0, f1)
+
+        losses.update(overall_loss.item(), images[0].size(0))
 
         optimizer.zero_grad()
-        loss.backward()
+        overall_loss.backward()
         optimizer.step()
         
+        batch_time.update(time.time() - end)
+        end = time.time()
+
         if (_iter % args.print_freq == 0) & (_iter != 0):
-            print('Overall iter: {:5d}, Loss: {:5f}'.format(overall_iter, running_loss/_iter))
-            #writer.add_scalar('train loss', running_loss/_iter, overall_iter)
+            progress.display(_iter)
         ### FOR DEBUGGING (visualize) !!!
         #bm, mm = model._get_feature_position_matrix(pos[0], pos[1], (7,7))
         #inter_rect = model._get_intersection_rect(pos[0], pos[1])

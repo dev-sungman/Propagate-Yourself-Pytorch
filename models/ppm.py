@@ -8,6 +8,7 @@ class LinearBlock(nn.Module):
         super(LinearBlock, self).__init__()
         self.linear = nn.Conv2d(indim, outdim, kernel_size=1)
         self.bn = nn.BatchNorm2d(outdim)
+        #self.bn = nn.SyncBatchNorm(outdim)
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
