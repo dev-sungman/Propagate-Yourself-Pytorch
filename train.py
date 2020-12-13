@@ -119,7 +119,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     cudnn.benchmark = True
 
-    dataset = PixProDataset(root=args.train_path)
+    dataset = PixProDataset(root=args.train_path, args=args)
     
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
@@ -162,12 +162,12 @@ def train(args, epoch, loader, model, optimizer):
     end = time.time()
     for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
-        targets = targets.cuda(args.gpu, non_blocking=True)
-        pos0, pos1, f0, f1 = targets[:, :4], targets[:, 4:8], targets[:,8], targets[:,9]
+        
+        base_A_matrix, target_A_matrix = targets[0].cuda(), targets[1].cuda()
         
         y, x_moment = model(images[0], images[1])
         pixpro_loss = PixproLoss(args)
-        overall_loss = pixpro_loss(y, x_moment, pos0, pos1, f0, f1)
+        overall_loss = pixpro_loss(y, x_moment, base_A_matrix, target_A_matrix)
 
         losses.update(overall_loss.item(), images[0].size(0))
 
