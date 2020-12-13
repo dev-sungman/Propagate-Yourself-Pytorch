@@ -11,7 +11,7 @@ from models.pixpro import PixPro
 from utils import AverageMeter, ProgressMeter
 from losses import PixproLoss
 from tensorboardX import SummaryWriter
-#from torchlars import LARS
+from torchlars import LARS
 
 import torch
 import torch.nn as nn
@@ -22,7 +22,8 @@ import torchvision
 from torch.utils.data import DataLoader
 
 import random
-from torchsummary import summary
+import warnings
+warnings.filterwarnings('ignore')
 
 def main(args):
     print('[*] PixPro Pytorch')
@@ -83,6 +84,8 @@ def main_worker(gpu, ngpus_per_node, args):
                 num_linear = args.num_linear,
                 )
 
+    scaled_lr = args.lr_base * args.batch_size/256
+    
     if args.distributed:
         if args.gpu is not None:
             torch.cuda.set_device(args.gpu)
@@ -100,13 +103,12 @@ def main_worker(gpu, ngpus_per_node, args):
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
-        raise NotImplementedError('only DDP is supported.')
     else:
         raise NotImplementedError('only DDP is supported.')
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr_base, weight_decay=args.weight_decay)
-    #base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    #optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr_base, weight_decay=args.weight_decay)
+    base_optimizer = torch.optim.SGD(model.parameters(), lr=scaled_lr, weight_decay=args.weight_decay)
+    optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
     
     if args.resume:
         checkpoint = torch.load(args.resume)
@@ -127,19 +129,17 @@ def main_worker(gpu, ngpus_per_node, args):
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
                     num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
     
-    scaled_lr = args.lr_base * args.batch_size/256
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 300)    
     
-    _iter = 0
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
-        train(args, epoch, loader, model, optimizer, _iter)
+        train(args, epoch, loader, model, optimizer)
         scheduler.step()
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
-            save_name = '{}.pth.tar'.format(_iter)
+            save_name = '{}.pth.tar'.format(epoch)
             save_name = os.path.join(args.checkpoint_dir, save_name)
             torch.save({
                 'epoch': epoch + 1,
@@ -147,10 +147,10 @@ def main_worker(gpu, ngpus_per_node, args):
                 'optimizer' : optimizer.state_dict(),
                 }, save_name)
 
-        _iter += 1
 
 
-def train(args, epoch, loader, model, optimizer, overall_iter):
+def train(args, epoch, loader, model, optimizer):
+    model.train()
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     progress = ProgressMeter(
@@ -158,7 +158,7 @@ def train(args, epoch, loader, model, optimizer, overall_iter):
         [batch_time, losses],
         prefix='Epoch: [{}]'.format(epoch))
     running_loss = 0
-
+    
     end = time.time()
     for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
@@ -166,7 +166,6 @@ def train(args, epoch, loader, model, optimizer, overall_iter):
         pos0, pos1, f0, f1 = targets[:, :4], targets[:, 4:8], targets[:,8], targets[:,9]
         
         y, x_moment = model(images[0], images[1])
-        
         pixpro_loss = PixproLoss(args)
         overall_loss = pixpro_loss(y, x_moment, pos0, pos1, f0, f1)
 
@@ -179,8 +178,9 @@ def train(args, epoch, loader, model, optimizer, overall_iter):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if (_iter % args.print_freq == 0) & (_iter != 0):
+        if (_iter % args.print_freq == 0):
             progress.display(_iter)
+        
         ### FOR DEBUGGING (visualize) !!!
         #bm, mm = model._get_feature_position_matrix(pos[0], pos[1], (7,7))
         #inter_rect = model._get_intersection_rect(pos[0], pos[1])

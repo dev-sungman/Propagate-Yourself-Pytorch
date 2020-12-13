@@ -9,7 +9,7 @@ def parse_arguments(argv):
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints')
     parser.add_argument('--log_dir', type=str, default='runs')
     parser.add_argument('--msg', type=str, default='')
-    parser.add_argument('--print_freq', type=int, default=100)
+    parser.add_argument('--print_freq', type=int, default=10)
     parser.add_argument('--start_epoch', type=int, default=0)
     
     ##### Distributed Training
