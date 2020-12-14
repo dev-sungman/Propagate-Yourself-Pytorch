@@ -37,8 +37,8 @@ python train.py --multiprocessing-distributed --world_size=1 --rank=0 --train_pa
 ## Transfer learning
 
 ### VOC
-
-
+* Training Epochs: ~23 epochs
+* Backbone : R50-C4
 
 ### COCO
 

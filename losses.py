@@ -13,19 +13,13 @@ class PixproLoss(nn.Module):
         
         assert base.shape == moment.shape, 'base, moment shape must be same' 
         feature_map_size = (base.shape[2], base.shape[3])
-        
-        # compute loss 
-        overall_loss = 0
-        iter_ = 0
 
         base_pixpro_loss = self._get_pixpro_loss(base, moment, base_A_matrix)
         moment_pixpro_loss = self._get_pixpro_loss(moment, base, moment_A_matrix)
 
-        overall_loss += (-base_pixpro_loss-moment_pixpro_loss)
-        iter_ += 1
+        overall_loss = (-base_pixpro_loss-moment_pixpro_loss)
         
-        return overall_loss / iter_
-    
+        return overall_loss
     
     def _get_pixpro_loss(self, base, moment, A):
         """
