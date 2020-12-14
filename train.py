@@ -106,7 +106,6 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         raise NotImplementedError('only DDP is supported.')
 
-    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr_base, weight_decay=args.weight_decay)
     base_optimizer = torch.optim.SGD(model.parameters(), lr=scaled_lr, weight_decay=args.weight_decay)
     optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
     
@@ -157,17 +156,18 @@ def train(args, epoch, loader, model, optimizer):
         len(loader),
         [batch_time, losses],
         prefix='Epoch: [{}]'.format(epoch))
-    running_loss = 0
     
     end = time.time()
     for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
         
-        base_A_matrix, target_A_matrix = targets[0].cuda(), targets[1].cuda()
+        base_A_matrix, moment_A_matrix = targets[0].cuda(), targets[1].cuda()
         
-        y, x_moment = model(images[0], images[1])
+        yi, xj_moment = model(images[0], images[1])
+        yj, xi_moment = model(images[1], images[0])
+
         pixpro_loss = PixproLoss(args)
-        overall_loss = pixpro_loss(y, x_moment, base_A_matrix, target_A_matrix)
+        overall_loss = pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix) 
 
         losses.update(overall_loss.item(), images[0].size(0))
 
@@ -180,11 +180,6 @@ def train(args, epoch, loader, model, optimizer):
 
         if (_iter % args.print_freq == 0):
             progress.display(_iter)
-        
-        ### FOR DEBUGGING (visualize) !!!
-        #bm, mm = model._get_feature_position_matrix(pos[0], pos[1], (7,7))
-        #inter_rect = model._get_intersection_rect(pos[0], pos[1])
-        #model.draw_for_debug(pos[0], pos[1], inter_rect, images[0], images[1], bm, mm)
 
 
 if __name__ == '__main__':

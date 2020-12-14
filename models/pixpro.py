@@ -37,8 +37,10 @@ class PixPro(nn.Module):
     def forward(self, x1, x2):
         base = self.base_encoder(x1)
         y = self.ppm(base)
-
-        moment = self.moment_encoder(x2)
+        
+        with torch.no_grad():
+            self._momentum_update()
+            moment = self.moment_encoder(x2)
 
         return y, moment
 
