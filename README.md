@@ -5,10 +5,10 @@
 
 ## TODO
 
-- [ ] Synchronized batchnorm
-- [ ] LARS optimizer
+- [x] Synchronized batchnorm
+- [x] LARS optimizer
 - [ ] PixContrast Loss
-- [ ] Matix optimzation
+- [x] Matix optimzation
 
 
 
@@ -19,8 +19,6 @@
   
 
 ## Unsupervised Training (Propagate Yourself)
-
-This implementation only supports multi-gpu, DistributedDataParallel training.
 
 ```python
 python train.py --multiprocessing-distributed --world_size=1 --rank=0 --train_path='$datapath' --batch_size=1024 
@@ -37,12 +35,9 @@ python train.py --multiprocessing-distributed --world_size=1 --rank=0 --train_pa
 ## Transfer learning
 
 ### VOC
-* Training Epochs: ~23 epochs
+* Training Epochs: ~23 epochs (24K iter)
+* Image size : [480,800] in train, 800 at inference.
 * Backbone : R50-C4
-
-### COCO
-
-
 
 
 
