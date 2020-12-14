@@ -3,11 +3,14 @@ from transforms import *
 import os
 import cv2
 
+from utils import draw_for_debug
+
 class PixProDataset(Dataset):
-    def __init__(self, root, data_size=(224,224)):
+    def __init__(self, root, args, data_size=(224,224)):
         self.root = root
         self.data_size = data_size
-        
+        self.args = args
+
         self.classes, self.class_to_idx = self._find_classes(self.root)
         self.samples = self._make_dataset(self.root, self.class_to_idx)
         self.targets = [s[1] for s in self.samples] 
@@ -54,42 +57,110 @@ class PixProDataset(Dataset):
         sample = self._load_image(path)
 
         sample1, x1, y1, w1, h1 = RandomResizedCrop(self.data_size)(sample)
-        sample1, is_flip1 = RandomHorizontalFlip(p=0)(sample1)
+        sample1, is_flip1 = RandomHorizontalFlip(p=0.5)(sample1)
         sample1 = self.transform(sample1)
 
         sample2, x2, y2, w2, h2 = RandomResizedCrop(self.data_size)(sample)
-        sample2, is_flip2 = RandomHorizontalFlip(p=0)(sample2)
+        sample2, is_flip2 = RandomHorizontalFlip(p=0.5)(sample2)
         sample2 = self.transform(sample2)
         
-        targets = torch.FloatTensor(np.array([x1, y1, w1, h1, x2, y2, w2, h2, is_flip1, is_flip2]))
+        # To make the A matrix
+        p_base = torch.FloatTensor(np.array([x1, y1, w1, h1]))
+        p_moment = torch.FloatTensor(np.array([x2, y2, w2, h2]))
+        f_base = torch.FloatTensor(np.array([is_flip1]))
+        f_moment = torch.FloatTensor(np.array([is_flip2]))
+        
+        base_matrix = self._warp_affine(p_base)     #position matrix
+        moment_matrix = self._warp_affine(p_moment) #position matrix
+        inter_rect = self._get_intersection_rect(p_base, p_moment)
+        
+        if inter_rect is not None:
+            if f_base.item() is True:
+                base_matrix = torch.fliplr(base_matrix)
+            if f_moment.item() is True:
+                moment_matrix = torch.fliplr(moment_matrix)
+             
+            base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base) 
+            moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment)
 
-        return (sample1, sample2), targets
+        else:
+            base_A_matrix = torch.zeros((49,49))
+            moment_A_matrix = torch.zeros((49,49))
+        
+        #draw_for_debug((x1, y1, w1, h1), (x2, y2, w2, h2), inter_rect, sample1, sample2, base_matrix, moment_matrix, path, base_A_matrix, moment_A_matrix)
+
+        return (sample1, sample2), (base_A_matrix, moment_A_matrix)
+
+    def _warp_affine(self, p, size=7):
+        """
+        To get warped matrix
+        p : feature map (base)
+        size : cropped position in original image space (base)
+        """
+        x, y, w, h = p
+        
+        matrix = torch.zeros((size, size, 2))
+        matrix[:, :, 0] = torch.stack([torch.linspace(x, x+w, size)]*size, 1)
+        matrix[:, :, 1] = torch.stack([torch.linspace(y, y+h, size)]*size, 0)
+        return matrix
     
+    def _get_intersection_rect(self, p1, p2):
+        x1, y1, w1, h1 = p1
+        x2, y2, w2, h2 = p2
+        
+        has_intersection = (abs((x1 + w1/2) - (x2 + w2/2)) * 2 < (w1 + w2)) and (abs((y1 + h1/2) - (y2 + h2/2))*2 < (h1 + h2))
+        
+        if has_intersection:
+            xA = max(x1, x2)
+            yA = max(y1, y2)
+            xB = min(x1+w1, x2+w2)
+            yB = min(y1+h1, y2+h2)
+            return min(xA, xB), min(yA, yB), max(xA, xB), max(yA, yB)
+        else:
+            return None
+         
+    def _get_A_matrix(self, base, moment, point):
+        x1, y1, w1, h1 = point
+        
+        diag_len = torch.sqrt((w1.float()**2) + (h1.float()**2))
+        
+        A_matrix = self._get_normalized_distance(base, moment, diag_len)
+        return A_matrix
+    
+    def _get_normalized_distance(self, base, moment, diaglen):
+        size = base.shape[0]*base.shape[1]
 
+        base_x_matrix = base[:,:,1]
+        base_y_matrix = base[:,:,0]
+        
+        moment_x_matrix = moment[:,:,1]
+        moment_y_matrix = moment[:,:,0]
+
+        dist_x_matrix = torch.mm(base_x_matrix.view(-1,1), torch.ones((1,size))) - torch.mm(torch.ones((size,1)), moment_x_matrix.view(1,-1))
+        dist_y_matrix = torch.mm(base_y_matrix.view(-1,1), torch.ones((1,size))) - torch.mm(torch.ones((size,1)), moment_y_matrix.view(1,-1))
+        
+        dist_matrix = torch.sqrt(dist_x_matrix**2 + dist_y_matrix**2) / diaglen
+        A_matrix = torch.zeros((dist_matrix.shape))
+        A_matrix[dist_matrix < self.args.threshold] = 1.
+        A_matrix[dist_matrix >= self.args.threshold] = 0.
+        
+        return A_matrix
+    
     def __len__(self):
         return len(self.samples)
 
 #### For test
 if __name__ == '__main__':
-    dataset = PixProDataset(root='imgs')
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--threshold', type=float, default=0.7)
+    args = parser.parse_args()
+
+    dataset = PixProDataset(root='/workspace/datasets/8_challenges/ILSVRC/Data/CLS-LOC/train', args=args)
     from torch.utils.data import DataLoader
     dataloader = DataLoader(dataset, batch_size=1)
 
-    for (i1,i2), (p1,p2), (f1, f2) in dataloader:
-        import torchvision        
-        torchvision.utils.save_image(i1, 'sample1.png')
-        torchvision.utils.save_image(i2, 'sample2.png')
-
-        np_s1 = i1.cpu().detach().numpy()
-        np_s2 = i2.cpu().detach().numpy()
-
-        
-        src_img = cv2.imread('/workspace/scripts/kakaobrain-homework/imgs/0/0.jpeg')
-        print_img = cv2.rectangle(src_img, (p1[0], p1[1]), (p1[0]+p1[2], p1[1]+p1[3]), (0,255,0), 2)
-        print_img = cv2.rectangle(print_img, (p2[0], p2[1]), (p2[0]+p2[2], p2[1]+p2[3]), (255, 0, 0), 2)
-
-        cv2.imwrite('origin.png', print_img)
-
-
+    for (i1,i2), (m1, m2) in dataloader:
+        print('debug')
         raise
 
