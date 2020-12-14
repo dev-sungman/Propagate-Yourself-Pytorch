@@ -3,6 +3,8 @@ from transforms import *
 import os
 import cv2
 
+from utils import draw_for_debug
+
 class PixProDataset(Dataset):
     def __init__(self, root, args, data_size=(224,224)):
         self.root = root
@@ -62,28 +64,31 @@ class PixProDataset(Dataset):
         sample2, is_flip2 = RandomHorizontalFlip(p=0)(sample2)
         sample2 = self.transform(sample2)
         
-        ### 
-        p_base_batch = torch.FloatTensor(np.array([x1, y1, w2, h1]))
-        p_moment_batch = torch.FloatTensor(np.array([x2, y2, w2, h2]))
-        f_base_batch = torch.FloatTensor(np.array([is_flip1]))
-        f_moment_batch = torch.FloatTensor(np.array([is_flip2]))
+        # To make the A matrix
+        p_base = torch.FloatTensor(np.array([x1, y1, w1, h1]))
+        p_moment = torch.FloatTensor(np.array([x2, y2, w2, h2]))
+        f_base = torch.FloatTensor(np.array([is_flip1]))
+        f_moment = torch.FloatTensor(np.array([is_flip2]))
         
-        base_matrix = self._warp_affine(p_base_batch)     #position matrix
-        moment_matrix = self._warp_affine(p_moment_batch) #position matrix
-        inter_rect = self._get_intersection_rect(p_base_batch, p_moment_batch)
+        base_matrix = self._warp_affine(p_base)     #position matrix
+        moment_matrix = self._warp_affine(p_moment) #position matrix
+        inter_rect = self._get_intersection_rect(p_base, p_moment)
         
         if inter_rect is not None:
-            if f_base_batch.item() is True:
+            if f_base.item() is True:
                 base_matrix = torch.fliplr(base_matrix)
-            if f_moment_batch.item() is True:
+            if f_moment.item() is True:
                 moment_matrix = torch.fliplr(moment_matrix)
              
-            base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base_batch) 
-            moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment_batch)
+            base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base) 
+            moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment)
+
         else:
             base_A_matrix = torch.zeros((49,49))
             moment_A_matrix = torch.zeros((49,49))
         
+        #draw_for_debug((x1, y1, w1, h1), (x2, y2, w2, h2), inter_rect, sample1, sample2, base_matrix, moment_matrix, path, base_A_matrix, moment_A_matrix)
+
         return (sample1, sample2), (base_A_matrix, moment_A_matrix)
 
     def _warp_affine(self, p, size=7):
@@ -146,25 +151,16 @@ class PixProDataset(Dataset):
 
 #### For test
 if __name__ == '__main__':
-    dataset = PixProDataset(root='imgs')
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--threshold', type=float, default=0.7)
+    args = parser.parse_args()
+
+    dataset = PixProDataset(root='/workspace/datasets/8_challenges/ILSVRC/Data/CLS-LOC/train', args=args)
     from torch.utils.data import DataLoader
     dataloader = DataLoader(dataset, batch_size=1)
 
-    for (i1,i2), (p1,p2), (f1, f2) in dataloader:
-        import torchvision        
-        torchvision.utils.save_image(i1, 'sample1.png')
-        torchvision.utils.save_image(i2, 'sample2.png')
-
-        np_s1 = i1.cpu().detach().numpy()
-        np_s2 = i2.cpu().detach().numpy()
-
-        
-        src_img = cv2.imread('/workspace/scripts/kakaobrain-homework/imgs/0/0.jpeg')
-        print_img = cv2.rectangle(src_img, (p1[0], p1[1]), (p1[0]+p1[2], p1[1]+p1[3]), (0,255,0), 2)
-        print_img = cv2.rectangle(print_img, (p2[0], p2[1]), (p2[0]+p2[2], p2[1]+p2[3]), (255, 0, 0), 2)
-
-        cv2.imwrite('origin.png', print_img)
-
-
+    for (i1,i2), (m1, m2) in dataloader:
+        print('debug')
         raise
 
