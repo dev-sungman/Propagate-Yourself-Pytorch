@@ -34,24 +34,3 @@ if __name__ == "__main__":
 
     with open(sys.argv[2], 'wb') as f:
         pkl.dump(res, f)
-
-        '''
-        old_k = k
-        k = k.replace("module.encoder_q.", "")
-        if "layer" not in k:
-            k = "stem." + k
-        for t in [1, 2, 3, 4]:
-            k = k.replace("layer{}".format(t), "res{}".format(t + 1))
-        for t in [1, 2, 3]:
-            k = k.replace("bn{}".format(t), "conv{}.norm".format(t))
-        k = k.replace("downsample.0", "shortcut")
-        k = k.replace("downsample.1", "shortcut.norm")
-        print(old_k, "->", k)
-        newmodel[k] = v.numpy()
-        '''
-    '''    
-    res = {"model": newmodel, "__author__": "MOCO", "matching_heuristics": True}
-
-    with open(sys.argv[2], "wb") as f:
-        pkl.dump(res, f)
-    '''
