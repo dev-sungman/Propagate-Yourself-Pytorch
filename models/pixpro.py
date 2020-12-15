@@ -41,6 +41,7 @@ class PixPro(nn.Module):
         with torch.no_grad():
             self._momentum_update()
             moment = self.moment_encoder(x2)
+        
 
         return y, moment
 

@@ -128,14 +128,13 @@ def main_worker(gpu, ngpus_per_node, args):
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
                     num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
     
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 300)    
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(loader)/args.batch_size)    
     
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
-        train(args, epoch, loader, model, optimizer)
-        scheduler.step()
+        train(args, epoch, loader, model, optimizer, scheduler)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
             save_name = '{}.pth.tar'.format(epoch)
@@ -148,7 +147,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
 
 
-def train(args, epoch, loader, model, optimizer):
+def train(args, epoch, loader, model, optimizer, scheduler):
     model.train()
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -163,6 +162,12 @@ def train(args, epoch, loader, model, optimizer):
         
         base_A_matrix, moment_A_matrix = targets[0].cuda(), targets[1].cuda()
         
+        batch_time.update(time.time() - end)
+        end = time.time()
+        
+        if torch.max(base_A_matrix) < 1 and torch.max(moment_A_matrix) < 1:
+            continue
+        
         yi, xj_moment = model(images[0], images[1])
         yj, xi_moment = model(images[1], images[0])
 
@@ -170,13 +175,12 @@ def train(args, epoch, loader, model, optimizer):
         overall_loss = pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix) 
 
         losses.update(overall_loss.item(), images[0].size(0))
-
+        
         optimizer.zero_grad()
         overall_loss.backward()
         optimizer.step()
+        scheduler.step()
         
-        batch_time.update(time.time() - end)
-        end = time.time()
 
         if (_iter % args.print_freq == 0):
             progress.display(_iter)
