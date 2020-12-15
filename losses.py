@@ -29,7 +29,7 @@ class PixproLoss(nn.Module):
         cos = nn.CosineSimilarity(dim=1, eps=1e-6)
         cos_sim = cos(base, moment)
         
-        A_matrix = A_matrix.type(torch.BoolTensor)
+        A_matrix = A_matrix.type(torch.BoolTensor).cuda()
         return cos_sim.masked_select(A_matrix).mean()
 
 if __name__ == '__main__':
