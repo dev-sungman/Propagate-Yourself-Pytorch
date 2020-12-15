@@ -22,13 +22,15 @@ class PixproLoss(nn.Module):
         moment : (B, C, 7, 7)
         A_matrix : (B, 49, 49)
         """
+
+        base = base.view(base.shape[0], base.shape[1], -1, 1)
+        moment = moment.view(moment.shape[0], moment.shape[1], 1, -1)
+
         cos = nn.CosineSimilarity(dim=1, eps=1e-6)
         cos_sim = cos(base, moment)
-        cos_sim = cos_sim.view(base.shape[0],-1,1) * A_matrix
         
-        pixpro_loss = torch.sum(cos_sim) / torch.count_nonzero(A_matrix)
-        return pixpro_loss
-
+        A_matrix = A_matrix.type(torch.BoolTensor)
+        return cos_sim.masked_select(A_matrix).mean()
 
 if __name__ == '__main__':
     base = torch.randn((512, 256, 7, 7))
