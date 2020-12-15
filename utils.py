@@ -37,8 +37,8 @@ class ProgressMeter(object):
         fmt = '{:' + str(num_digits) + 'd}'
         return '[' + fmt + '/' + fmt.format(num_batches) + ']'
 
-##### FOR DEBUGGING !!!
 
+##### FOR VISUAL DEBUGGING !!!
 import numpy as np
 import torchvision
 import cv2

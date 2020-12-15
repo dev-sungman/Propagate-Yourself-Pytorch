@@ -104,6 +104,7 @@ class PixProDataTransform(object):
         x2 = self.transform(x)
         return x1, x2
 
+### TEST
 if __name__ == '__main__':
     img = Image.open('testimg.png')
     np_img = np.asarray(img)

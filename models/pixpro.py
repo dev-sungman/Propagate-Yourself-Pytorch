@@ -45,22 +45,6 @@ class PixPro(nn.Module):
 
         return y, moment
 
-    '''
-    def _compute_pix_contrast_loss(self, inter_mask, base_feature, moment_feature, A_matrix):
-        remain_fm = inter_mask * base_feature
-        
-        for i in range(base_feature.shape[2]):
-            for j in range(base_feature.shape[3]):
-                x_i = base_feature[:,:, i, j]
-
-                for k in range(moment_feature.shape[2]):
-                    for l in range(moment_feature.shape[3]):
-                        if A_matirx[i, j, k, l] == 1:
-                            cos_sim = self._compute_cosine_similarity(base_feature[:,:,i,j], moment_feature[:,:,k,l])
-                            print(cos_sim)
-                            raise
-    '''
-
     @torch.no_grad()
     #TODO: update momeuntum gradually to 1
     def _momentum_update(self):

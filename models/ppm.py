@@ -27,6 +27,10 @@ class PixelPropagationModule(nn.Module):
         self.transform_block = self._make_transform_block(LinearBlock, num_linear)
 
     def _compute_similarity(self, x):
+        """
+        Compute similarity
+        x : input matrix (b, c, h, w)
+        """
         b, c, h, w = x.shape
         
         x_norm = x.view(b, c*h*w)
@@ -65,6 +69,7 @@ class PixelPropagationModule(nn.Module):
         
         return y
 
+##### TEST
 if __name__ == '__main__':
     x = torch.randn(8,256,7,7).float()
     ppm = PixelPropagationModule()

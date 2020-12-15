@@ -18,9 +18,9 @@ class PixproLoss(nn.Module):
 
     def _get_pixpro_loss(self, base, moment, A_matrix):
         """
-        base : (B, C, 7, 7)
-        moment : (B, C, 7, 7)
-        A_matrix : (B, 49, 49)
+        base : base matrix (B, C, 7, 7)
+        moment : moment matrix (B, C, 7, 7)
+        A_matrix : A matrix (B, 49, 49)
         """
 
         base = base.view(base.shape[0], base.shape[1], -1, 1)
@@ -32,6 +32,7 @@ class PixproLoss(nn.Module):
         A_matrix = A_matrix.type(torch.BoolTensor).cuda()
         return cos_sim.masked_select(A_matrix).mean()
 
+# for test
 if __name__ == '__main__':
     base = torch.randn((512, 256, 7, 7))
     moment = torch.randn((512, 256, 7, 7))

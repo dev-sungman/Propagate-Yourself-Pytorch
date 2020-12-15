@@ -70,10 +70,12 @@ class PixProDataset(Dataset):
         f_base = torch.FloatTensor(np.array([is_flip1]))
         f_moment = torch.FloatTensor(np.array([is_flip2]))
         
-        base_matrix = self._warp_affine(p_base)     #position matrix
-        moment_matrix = self._warp_affine(p_moment) #position matrix
+        # Position matrix
+        base_matrix = self._warp_affine(p_base)     
+        moment_matrix = self._warp_affine(p_moment) 
         inter_rect = self._get_intersection_rect(p_base, p_moment)
         
+        # If any intersection detected, don't have to update the loss.
         if inter_rect is not None:
             if f_base.item() is True:
                 base_matrix = torch.fliplr(base_matrix)
@@ -87,13 +89,11 @@ class PixProDataset(Dataset):
             base_A_matrix = torch.zeros((49,49))
             moment_A_matrix = torch.zeros((49,49))
         
-        #draw_for_debug((x1, y1, w1, h1), (x2, y2, w2, h2), inter_rect, sample1, sample2, base_matrix, moment_matrix, path, base_A_matrix, moment_A_matrix)
-
         return (sample1, sample2), (base_A_matrix, moment_A_matrix)
 
     def _warp_affine(self, p, size=7):
         """
-        To get warped matrix
+        Get warped matrix
         p : feature map (base)
         size : cropped position in original image space (base)
         """
@@ -105,6 +105,11 @@ class PixProDataset(Dataset):
         return matrix
     
     def _get_intersection_rect(self, p1, p2):
+        """
+        Get instersection rect
+        p1 : base rect
+        p2 : moment rect
+        """
         x1, y1, w1, h1 = p1
         x2, y2, w2, h2 = p2
         
@@ -120,6 +125,12 @@ class PixProDataset(Dataset):
             return None
          
     def _get_A_matrix(self, base, moment, point):
+        """
+        Get A matrix
+        base : base coordinates
+        moment : moment coordinates
+        point : base rect's position (x, y, w, h)
+        """
         x1, y1, w1, h1 = point
         
         diag_len = torch.sqrt((w1.float()**2) + (h1.float()**2))
@@ -128,6 +139,12 @@ class PixProDataset(Dataset):
         return A_matrix
     
     def _get_normalized_distance(self, base, moment, diaglen):
+        """
+        Get normalized distance
+        base : base coordinates
+        moment : moment coordinates
+        diaglen : base rect's diangonal length for normalization
+        """
         size = base.shape[0]*base.shape[1]
 
         base_x_matrix = base[:,:,1]
@@ -135,7 +152,8 @@ class PixProDataset(Dataset):
         
         moment_x_matrix = moment[:,:,1]
         moment_y_matrix = moment[:,:,0]
-
+        
+        # to compute the pairwise distance
         dist_x_matrix = torch.mm(base_x_matrix.view(-1,1), torch.ones((1,size))) - torch.mm(torch.ones((size,1)), moment_x_matrix.view(1,-1))
         dist_y_matrix = torch.mm(base_y_matrix.view(-1,1), torch.ones((1,size))) - torch.mm(torch.ones((size,1)), moment_y_matrix.view(1,-1))
         
