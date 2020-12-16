@@ -2,22 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-class LinearBlock(nn.Module):
-    def __init__(self, indim, outdim):
-        super(LinearBlock, self).__init__()
-        self.linear = nn.Conv2d(indim, outdim, kernel_size=1)
-        self.bn = nn.BatchNorm2d(outdim)
-        #self.bn = nn.SyncBatchNorm(outdim)
-        self.relu = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        x = self.linear(x)
-        x = self.bn(x)
-        x = self.relu(x)
-
-        return x
-
 class PixelPropagationModule(nn.Module):
     def __init__(self, sharpness=2, num_linear=1):
         super(PixelPropagationModule, self).__init__()
@@ -49,12 +33,19 @@ class PixelPropagationModule(nn.Module):
         return s
 
     def _make_transform_block(self, block, num_linear):
-        layers = []
- 
-        for _ in range(num_linear):
-            layers.append(LinearBlock(indim=256, outdim=256))
-        
-        return nn.Sequential(*layers)
+        assert num_linear < 3, 'please select num_linear value below 3'
+        if num_linear == 0:
+            return nn.Identity()
+        elif num_linear == 1:
+            return nn.Conv2d(indim=256, outdim=256)
+        else:
+            return nn.Sequential(
+                nn.Conv2d(256, 256, 1),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(256, 256, 1)
+                )
+            
 
     def forward(self, x):
         b, c, h, w = x.shape
