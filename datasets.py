@@ -18,10 +18,12 @@ class PixProDataset(Dataset):
         self.transform = transforms.Compose([
             transforms.RandomApply([
                 transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)],
-                p=0.6),
+                p=0.8),
+            transforms.RandomGrayscale(p=0.2),
             GaussianBlur(prob=0.3, mag=3),
             Solarize(prob=0.3, mag=0.5),
-            transforms.ToTensor()
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
     def _find_classes(self, dir):
@@ -73,22 +75,15 @@ class PixProDataset(Dataset):
         # Position matrix
         base_matrix = self._warp_affine(p_base)     
         moment_matrix = self._warp_affine(p_moment) 
-        inter_rect = self._get_intersection_rect(p_base, p_moment)
         
-        # If any intersection detected, don't have to update the loss.
-        if inter_rect is not None:
-            if f_base.item() is True:
-                base_matrix = torch.fliplr(base_matrix)
-            if f_moment.item() is True:
-                moment_matrix = torch.fliplr(moment_matrix)
-             
-            base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base) 
-            moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment)
+        if f_base.item() > 0:
+            base_matrix = torch.fliplr(base_matrix)
+        if f_moment.item() > 0:
+            moment_matrix = torch.fliplr(moment_matrix)
+         
+        base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base) 
+        moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment)
 
-        else:
-            base_A_matrix = torch.zeros((49,49))
-            moment_A_matrix = torch.zeros((49,49))
-        
         return (sample1, sample2), (base_A_matrix, moment_A_matrix)
 
     def _warp_affine(self, p, size=7):
@@ -103,26 +98,6 @@ class PixProDataset(Dataset):
         matrix[:, :, 0] = torch.stack([torch.linspace(x, x+w, size)]*size, 1)
         matrix[:, :, 1] = torch.stack([torch.linspace(y, y+h, size)]*size, 0)
         return matrix
-    
-    def _get_intersection_rect(self, p1, p2):
-        """
-        Get instersection rect
-        p1 : base rect
-        p2 : moment rect
-        """
-        x1, y1, w1, h1 = p1
-        x2, y2, w2, h2 = p2
-        
-        has_intersection = (abs((x1 + w1/2) - (x2 + w2/2)) * 2 < (w1 + w2)) and (abs((y1 + h1/2) - (y2 + h2/2))*2 < (h1 + h2))
-        
-        if has_intersection:
-            xA = max(x1, x2)
-            yA = max(y1, y2)
-            xB = min(x1+w1, x2+w2)
-            yB = min(y1+h1, y2+h2)
-            return min(xA, xB), min(yA, yB), max(xA, xB), max(yA, yB)
-        else:
-            return None
          
     def _get_A_matrix(self, base, moment, point):
         """

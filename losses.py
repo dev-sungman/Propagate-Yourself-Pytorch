@@ -23,7 +23,7 @@ class PixproLoss(nn.Module):
         A_matrix : A matrix (B, 49, 49)
         """
 
-        base = base.view(base.shape[0], base.shape[1], -1, 1)
+        base = base.view(base.shape[0], base.shape[1], 1, -1)
         moment = moment.view(moment.shape[0], moment.shape[1], 1, -1)
 
         cos = nn.CosineSimilarity(dim=1, eps=1e-6)
