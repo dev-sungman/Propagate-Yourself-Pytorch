@@ -172,7 +172,7 @@ def train(args, epoch, loader, model, optimizer):
         yj, xi_moment = model(images[1], images[0])
 
         pixpro_loss = PixproLoss(args)
-        overall_loss = 2 + (pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix))
+        overall_loss = pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix)
 
         losses.update(overall_loss.item(), images[0].size(0))
         
