@@ -18,10 +18,12 @@ class PixProDataset(Dataset):
         self.transform = transforms.Compose([
             transforms.RandomApply([
                 transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)],
-                p=0.6),
+                p=0.8),
+            transforms.RandomGrayscale(p=0.2),
             GaussianBlur(prob=0.3, mag=3),
             Solarize(prob=0.3, mag=0.5),
-            transforms.ToTensor()
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
     def _find_classes(self, dir):
@@ -86,8 +88,6 @@ class PixProDataset(Dataset):
         else:
             base_A_matrix = torch.zeros((49,49))
             moment_A_matrix = torch.zeros((49,49))
-        
-        #draw_for_debug((x1, y1, w1, h1), (x2, y2, w2, h2), inter_rect, sample1, sample2, base_matrix, moment_matrix, path, base_A_matrix, moment_A_matrix)
 
         return (sample1, sample2), (base_A_matrix, moment_A_matrix)
 

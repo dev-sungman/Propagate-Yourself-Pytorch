@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import pathlib
+import math
 from datetime import datetime
 
 from config import parse_arguments
@@ -84,7 +85,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 num_linear = args.num_linear,
                 )
 
-    scaled_lr = args.lr_base * args.batch_size/256
+    args.lr = args.lr_base * args.batch_size/256
     
     if args.distributed:
         if args.gpu is not None:
@@ -106,7 +107,7 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         raise NotImplementedError('only DDP is supported.')
 
-    base_optimizer = torch.optim.SGD(model.parameters(), lr=scaled_lr, weight_decay=args.weight_decay)
+    base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
     
     if args.resume:
@@ -128,13 +129,12 @@ def main_worker(gpu, ngpus_per_node, args):
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
                     num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
     
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(loader)/args.batch_size)    
-    
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
-
-        train(args, epoch, loader, model, optimizer, scheduler)
+        
+        adjust_lr(optimizer, epoch, args)
+        train(args, epoch, loader, model, optimizer)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
             save_name = '{}.pth.tar'.format(epoch)
@@ -147,7 +147,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
 
 
-def train(args, epoch, loader, model, optimizer, scheduler):
+def train(args, epoch, loader, model, optimizer):
     model.train()
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -172,19 +172,23 @@ def train(args, epoch, loader, model, optimizer, scheduler):
         yj, xi_moment = model(images[1], images[0])
 
         pixpro_loss = PixproLoss(args)
-        overall_loss = pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix) 
+        overall_loss = 2 + (pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix))
 
         losses.update(overall_loss.item(), images[0].size(0))
         
         optimizer.zero_grad()
         overall_loss.backward()
         optimizer.step()
-        scheduler.step()
-        
 
         if (_iter % args.print_freq == 0):
             progress.display(_iter)
 
+def adjust_lr(optimizer, epoch, args):
+    lr = args.lr
+    lr *= 0.5 * (1.+ math.cos(math.pi * epoch / args.epochs))
+    
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 if __name__ == '__main__':
     argv = parse_arguments(sys.argv[1:])
