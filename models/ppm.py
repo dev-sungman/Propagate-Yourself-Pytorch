@@ -8,7 +8,7 @@ class PixelPropagationModule(nn.Module):
         self.sharpness = sharpness
         self.num_linear = num_linear
         
-        self.transform_block = self._make_transform_block(LinearBlock, num_linear)
+        self.transform_block = self._make_transform_block(num_linear)
 
     def _compute_similarity(self, x):
         """
@@ -32,12 +32,12 @@ class PixelPropagationModule(nn.Module):
         s = torch.pow(F.relu(cos), self.sharpness)
         return s
 
-    def _make_transform_block(self, block, num_linear):
+    def _make_transform_block(self, num_linear):
         assert num_linear < 3, 'please select num_linear value below 3'
         if num_linear == 0:
             return nn.Identity()
         elif num_linear == 1:
-            return nn.Conv2d(indim=256, outdim=256)
+            return nn.Conv2d(256, 256, 1)
         else:
             return nn.Sequential(
                 nn.Conv2d(256, 256, 1),
