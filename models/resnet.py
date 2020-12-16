@@ -142,15 +142,11 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        self.proj_1 = nn.Sequential(
+        self.projection = nn.Sequential(
             nn.Conv2d(512*block.expansion, dim1, kernel_size=1),
             norm_layer(dim1),
-            nn.ReLU(inplace=True)
-        )
-        self.proj_2 = nn.Sequential(
+            nn.ReLU(inplace=True),
             nn.Conv2d(dim1, dim2, kernel_size=1),
-            norm_layer(dim2),
-            nn.ReLU(inplace=True)
         )
 
         for m in self.modules():
@@ -198,8 +194,7 @@ class ResNet(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        x = self.proj_1(x)
-        x = self.proj_2(x)
+        x = self.projection(x)
         #x = self.avgpool(x)
 
         return x
