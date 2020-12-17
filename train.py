@@ -10,9 +10,9 @@ from datasets import PixProDataset
 from models.resnet import resnet50
 from models.pixpro import PixPro
 from utils import AverageMeter, ProgressMeter
-from losses import PixproLoss
+from losses import PixproLoss, PixContrastLoss
 from tensorboardX import SummaryWriter
-from torchlars import LARS
+#from torchlars import LARS
 
 import torch
 import torch.nn as nn
@@ -107,8 +107,9 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         raise NotImplementedError('only DDP is supported.')
 
-    base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
+    #base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    #optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     
     if args.resume:
         checkpoint = torch.load(args.resume)
@@ -146,7 +147,6 @@ def main_worker(gpu, ngpus_per_node, args):
                 }, save_name)
 
 
-
 def train(args, epoch, loader, model, optimizer):
     model.train()
     batch_time = AverageMeter('Time', ':6.3f')
@@ -160,25 +160,35 @@ def train(args, epoch, loader, model, optimizer):
     for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
         
-        base_A_matrix, moment_A_matrix = targets[0].cuda(), targets[1].cuda()
-        
-        batch_time.update(time.time() - end)
-        end = time.time()
-        
-        if torch.max(base_A_matrix) < 1 and torch.max(moment_A_matrix) < 1:
-            continue
-        
         yi, xj_moment = model(images[0], images[1])
         yj, xi_moment = model(images[1], images[0])
 
-        pixpro_loss = PixproLoss(args)
-        overall_loss = pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix)
+        if args.loss == 'pixpro':         
+            base_A_matrix, moment_A_matrix = targets[0].cuda(args.gpu), targets[1].cuda(args.gpu)
+            pixpro_loss = PixproLoss(args)
+            overall_loss = pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix)
+        
+        elif args.loss == 'pixcontrast':
+            base_A_matrix, moment_A_matrix = targets[0][0].cuda(args.gpu), targets[0][1].cuda(args.gpu)
+            base_inter_mask, moment_inter_mask = targets[1][0].cuda(args.gpu), targets[1][1].cuda(args.gpu)
+
+            pixcontrast_loss = PixContrastLoss(args)
+            overall_loss = (pixcontrast_loss(yi, xj_moment, base_A_matrix, base_inter_mask) 
+                            + pixcontrast_loss(yj, xi_moment, moment_A_matrix, moment_inter_mask)) / 2
+        else:
+            ValueError('HAVE TO SELECT PROPER LOSS TYPE')
+
+        if torch.max(base_A_matrix) < 1 and torch.max(moment_A_matrix) < 1:
+            continue
 
         losses.update(overall_loss.item(), images[0].size(0))
         
         optimizer.zero_grad()
         overall_loss.backward()
         optimizer.step()
+        
+        batch_time.update(time.time() - end)
+        end = time.time()
 
         if (_iter % args.print_freq == 0):
             progress.display(_iter)

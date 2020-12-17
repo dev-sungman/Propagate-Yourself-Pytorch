@@ -4,6 +4,16 @@ import numpy as np
 
 import time
 
+
+def get_cosine_similarity(base, moment, dim=1):
+    base = base.view(base.shape[0], base.shape[1], 1, -1)
+    moment = moment.view(moment.shape[0], moment.shape[1], -1, 1)
+
+    cos = nn.CosineSimilarity(dim=dim, eps=1e-6)
+    cos_sim = cos(base, moment)
+
+    return cos_sim
+
 class PixproLoss(nn.Module):
     def __init__(self, args):
         super(PixproLoss, self).__init__()
@@ -22,45 +32,32 @@ class PixproLoss(nn.Module):
         moment : moment matrix (B, C, 7, 7)
         A_matrix : A matrix (B, 49, 49)
         """
-
-        base = base.view(base.shape[0], base.shape[1], 1, -1)
-        moment = moment.view(moment.shape[0], moment.shape[1], -1, 1)
-
-        cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-        cos_sim = cos(base, moment)
+        cos_sim = get_cosine_similarity(base, moment)
         
         A_matrix = A_matrix.type(torch.BoolTensor).cuda()
         return cos_sim.masked_select(A_matrix).mean()
+
 
 class PixContrastLoss(nn.Module):
     def __init__(self, args):
         super(PixContrastLoss, self).__init__()
         self.args = args
 
-    def forward(self, p1, p2, m1, m2, irect):
+    def forward(self, base, moment, A_matrix, inter_mask):
         """
-        p1 : base position matrix (B, 7, 7, 2)
-        p2 : moment position matrix (B, 7, 7, 2)
-        irect : intersection rectangle
-        m1 : base feature matrix (B, C, 7, 7)
-        m2 : moment feature matrix (B, C, 7, 7)
+        base : base matrix (B, C, 7, 7)
+        moment : moment matrix (B, C, 7, 7)
+        A_matrix : A matrix (B, 49, 49)
+        inter_mask : mask located in intersection area 
         """
-        inter_mask = self._get_intersection_mask(p1, m1, irect)    
-        print(inter_mask)
+        cos_sim = get_cosine_similarity(base, moment)
+        A_matrix *= inter_mask.unsqueeze(-1)
+        A_matrix = A_matrix.type(torch.BoolTensor).cuda()
 
-    def _get_intersection_mask(self, p, m, irect):
-        """
-        p : position matrix (B, 7, 7, 2)
-        m : base feature matrix (B, C, 7, 7)
-        irect : intersection rectangle
-        """
-        ix1, iy1, ix2, iy2 = irect[0], irect[1], irect[2], irect[3]
-        print(p[:,:,1])
-        print(p[:,:,0])
-        inter_mask = torch.where((p[:,:,0] >= iy1) & (p[:,:,0] <= iy2) &
-                                  (p[:,:,1] >= ix1) & (p[:,:,1] <= ix2), 1., 0.)
-        print(inter_mask.shape)
-        return inter_mask 
+        pos = cos_sim.masked_select(A_matrix) / self.args.T
+        neg = cos_sim.masked_select(~A_matrix) / self.args.T
+
+        return -torch.log(pos.exp().sum() / (pos.exp().sum() + neg.exp().sum()))
 
 
 # for test

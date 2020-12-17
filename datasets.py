@@ -84,8 +84,16 @@ class PixProDataset(Dataset):
         base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base) 
         moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment)
         
+        if self.args.loss == 'pixpro':
+            return (sample1, sample2), (base_A_matrix, moment_A_matrix)
+        
+        else:
+            inter_rect = self._get_intersection_rect((x1, y1, w1, h1), (x2, y2, w2, h2))
 
-        return (sample1, sample2), (base_A_matrix, moment_A_matrix)
+            base_inter_mask = self._get_intersection_mask(base_matrix, inter_rect)
+            moment_inter_mask = self._get_intersection_mask(moment_matrix, inter_rect)
+            
+            return (sample1, sample2), ((base_A_matrix, moment_A_matrix), (base_inter_mask, moment_inter_mask))
 
     def _warp_affine(self, p, size=7):
         """
@@ -122,6 +130,13 @@ class PixProDataset(Dataset):
             return torch.FloatTensor(np.array([min(xA, xB), min(yA, yB), max(xA, xB), max(yA, yB)]))
         else:
             return torch.FloatTensor(np.array([0, 0, 0, 0]))
+
+    def _get_intersection_mask(self, p, inter_rect):
+        ix1, iy1, ix2, iy2 = inter_rect
+        
+        inter_mask = torch.where((p[:,:,0] >= iy1) & (p[:,:,0] <= iy2) 
+                                    & (p[:,:,1] >= ix1) & (p[:,:,1] <=ix2), 1., 0.)
+        return torch.flatten(inter_mask)
 
     def _get_A_matrix(self, base, moment, point):
         """
