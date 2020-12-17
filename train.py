@@ -110,7 +110,7 @@ def main_worker(gpu, ngpus_per_node, args):
     #base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     #optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    
+    writer = SummaryWriter(args.log_dir) 
     if args.resume:
         checkpoint = torch.load(args.resume)
         args.start_epoch = checkpoint['epoch']
@@ -135,7 +135,7 @@ def main_worker(gpu, ngpus_per_node, args):
             train_sampler.set_epoch(epoch)
         
         adjust_lr(optimizer, epoch, args)
-        train(args, epoch, loader, model, optimizer)
+        train(args, epoch, loader, model, optimizer, writer)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
             save_name = '{}.pth.tar'.format(epoch)
@@ -147,7 +147,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 }, save_name)
 
 
-def train(args, epoch, loader, model, optimizer):
+def train(args, epoch, loader, model, optimizer, writer):
     model.train()
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -157,6 +157,7 @@ def train(args, epoch, loader, model, optimizer):
         prefix='Epoch: [{}]'.format(epoch))
     
     end = time.time()
+
     for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
         
@@ -192,6 +193,8 @@ def train(args, epoch, loader, model, optimizer):
 
         if (_iter % args.print_freq == 0) and (args.gpu==0):
             progress.display(_iter)
+            writer.add_scalar('Loss', overall_loss.item(), epoch)
+
 
 def adjust_lr(optimizer, epoch, args):
     lr = args.lr
