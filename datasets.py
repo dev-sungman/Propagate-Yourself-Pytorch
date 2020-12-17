@@ -84,9 +84,8 @@ class PixProDataset(Dataset):
         base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base) 
         moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment)
         
-        inter_rect = self._get_intersection_rect((x1,y1,w1,h1),(x2,y2,w2,h2))
 
-        return (sample1, sample2), (base_A_matrix, moment_A_matrix), inter_rect
+        return (sample1, sample2), (base_A_matrix, moment_A_matrix)
 
     def _warp_affine(self, p, size=7):
         """

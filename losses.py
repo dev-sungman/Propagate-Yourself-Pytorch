@@ -24,7 +24,7 @@ class PixproLoss(nn.Module):
         """
 
         base = base.view(base.shape[0], base.shape[1], 1, -1)
-        moment = moment.view(moment.shape[0], moment.shape[1], 1, -1)
+        moment = moment.view(moment.shape[0], moment.shape[1], -1, 1)
 
         cos = nn.CosineSimilarity(dim=1, eps=1e-6)
         cos_sim = cos(base, moment)
@@ -75,10 +75,6 @@ if __name__ == '__main__':
     matrix1 = torch.zeros((size, size, 2))
     matrix1[:, :, 1] = torch.stack([torch.linspace(x, x+w, size)]*size, 0)
     matrix1[:, :, 0] = torch.stack([torch.linspace(y, y+h, size)]*size, 1)
-    
-    #matrix1[:, :, 0] = torch.stack([torch.linspace(x, x+w, size)]*size, 1)
-    #matrix1[:, :, 1] = torch.stack([torch.linspace(y, y+h, size)]*size, 0)
-    
     
     x, y, w, h = 26, 5, 210, 231
     matrix2 = torch.zeros((7, 7, 2))
