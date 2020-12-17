@@ -5,10 +5,9 @@
 
 ## TODO
 
-- [x] Synchronized batch-norm
-- [x] LARS optimizer
-- [x] Matrix Optimization (Fast training)
-- [ ] PixContrast Loss
+- [ ] Training with PixContrast Loss
+- [ ] Training with Task Loss
+- [ ] Transfer learning : COCO 
 
 
 
@@ -21,7 +20,7 @@
 ## Unsupervised Training 
 
 ```python
-python train.py --multiprocessing-distributed --world_size=1 --rank=0 --train_path='$datapath' --batch_size=1024 
+python train.py --multiprocessing-distributed --world_size=1 --rank=0 --train_path='$datapath' --batch_size=512
 ```
 
 
