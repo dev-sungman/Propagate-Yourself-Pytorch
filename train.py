@@ -190,7 +190,7 @@ def train(args, epoch, loader, model, optimizer):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if (_iter % args.print_freq == 0):
+        if (_iter % args.print_freq == 0) and (args.gpu==0):
             progress.display(_iter)
 
 def adjust_lr(optimizer, epoch, args):

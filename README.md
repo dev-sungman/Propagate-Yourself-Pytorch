@@ -5,7 +5,7 @@
 
 ## TODO
 
-- [ ] Training with PixContrast Loss
+- [x] Training with PixContrast Loss
 - [ ] Training with Task Loss
 - [ ] Transfer learning : COCO 
 
@@ -62,9 +62,12 @@ python train.py --multiprocessing-distributed --world_size=1 --rank=0 --train_pa
    python downstream/train_downstream.py --config-file downstream/configs/pascal_voc_R_50_C4_24k.yaml --num-gpus 4 MODEL.WEIGHTS downstream/pixpro_voc.pkl
    ```
 
-   
 
-   
+
+
+### COCO
+
+
 
 ## Evaluation
 
