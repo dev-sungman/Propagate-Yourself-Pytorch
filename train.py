@@ -193,7 +193,7 @@ def train(args, epoch, loader, model, optimizer, writer):
 
         if (_iter % args.print_freq == 0) and (args.gpu==0):
             progress.display(_iter)
-            writer.add_scalar('Loss', overall_loss.item(), epoch)
+            writer.add_scalar('Loss', overall_loss.item(), (epoch*len(loader))+_iter)
 
 
 def adjust_lr(optimizer, epoch, args):
