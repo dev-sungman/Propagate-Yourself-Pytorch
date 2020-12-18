@@ -151,9 +151,11 @@ def train(args, epoch, loader, model, optimizer, writer):
     model.train()
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
+    lr = AverageMeter('Lr', ':.3f')
+
     progress = ProgressMeter(
         len(loader),
-        [batch_time, losses],
+        [lr, batch_time, losses],
         prefix='Epoch: [{}]'.format(epoch))
     
     end = time.time()
@@ -183,7 +185,9 @@ def train(args, epoch, loader, model, optimizer, writer):
             continue
 
         losses.update(overall_loss.item(), images[0].size(0))
-        
+        for param_group in optimizer.param_groups:
+            cur_lr = param_group['lr']
+        lr.update(cur_lr) 
         optimizer.zero_grad()
         overall_loss.backward()
         optimizer.step()
@@ -194,8 +198,6 @@ def train(args, epoch, loader, model, optimizer, writer):
         if (_iter % args.print_freq == 0) and (args.gpu==0):
             progress.display(_iter)
             writer.add_scalar('Loss', overall_loss.item(), (epoch*len(loader))+_iter)
-            for param_group in optimizer.param_groups:
-                cur_lr = param_group['lr']
             writer.add_scalar('lr', cur_lr, (epoch*len(loader))+_iter)
 
 

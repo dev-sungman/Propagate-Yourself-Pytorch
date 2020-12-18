@@ -41,12 +41,10 @@ class PixPro(nn.Module):
         with torch.no_grad():
             self._momentum_update()
             moment = self.moment_encoder(x2)
-        
 
         return y, moment
 
     @torch.no_grad()
-    #TODO: update momeuntum gradually to 1
     def _momentum_update(self):
         for param_base, param_moment in zip(self.base_encoder.parameters(), self.moment_encoder.parameters()):
             param_moment.data = param_moment.data * self.m + param_base.data * (1. - self.m)
