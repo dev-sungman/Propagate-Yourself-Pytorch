@@ -8,9 +8,10 @@ def parse_arguments(argv):
     parser.add_argument('--resume', type=str, default='', metavar='PATH')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints')
     parser.add_argument('--log_dir', type=str, default='runs')
-    parser.add_argument('--msg', type=str, default='pixpro')
-    parser.add_argument('--print_freq', type=int, default=10)
+    parser.add_argument('--msg', type=str, default='trainlog')
+    parser.add_argument('--print_freq', type=int, default=100)
     parser.add_argument('--start_epoch', type=int, default=0)
+    parser.add_argument('--loss', type=str, default='pixpro')
     
     ##### Distributed Training
     parser.add_argument('--world_size', type=int, default=1)
@@ -28,7 +29,7 @@ def parse_arguments(argv):
     # num epochs
     parser.add_argument('--epochs', type=int, default=100)
     # batch size
-    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--batch_size', type=int, default=512)
     # initial learning 
     parser.add_argument('--lr_base', type=float, default=1.0)
     # weight decay

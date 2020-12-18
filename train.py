@@ -10,9 +10,9 @@ from datasets import PixProDataset
 from models.resnet import resnet50
 from models.pixpro import PixPro
 from utils import AverageMeter, ProgressMeter
-from losses import PixproLoss
+from losses import PixproLoss, PixContrastLoss
 from tensorboardX import SummaryWriter
-from torchlars import LARS
+#from torchlars import LARS
 
 import torch
 import torch.nn as nn
@@ -107,9 +107,10 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         raise NotImplementedError('only DDP is supported.')
 
-    base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
-    
+    #base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    #optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    writer = SummaryWriter(args.log_dir) 
     if args.resume:
         checkpoint = torch.load(args.resume)
         args.start_epoch = checkpoint['epoch']
@@ -134,7 +135,7 @@ def main_worker(gpu, ngpus_per_node, args):
             train_sampler.set_epoch(epoch)
         
         adjust_lr(optimizer, epoch, args)
-        train(args, epoch, loader, model, optimizer)
+        train(args, epoch, loader, model, optimizer, writer)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
             save_name = '{}.pth.tar'.format(epoch)
@@ -146,42 +147,59 @@ def main_worker(gpu, ngpus_per_node, args):
                 }, save_name)
 
 
-
-def train(args, epoch, loader, model, optimizer):
+def train(args, epoch, loader, model, optimizer, writer):
     model.train()
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
+    lr = AverageMeter('Lr', ':.3f')
+
     progress = ProgressMeter(
         len(loader),
-        [batch_time, losses],
+        [lr, batch_time, losses],
         prefix='Epoch: [{}]'.format(epoch))
     
     end = time.time()
+
     for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
-        
-        base_A_matrix, moment_A_matrix = targets[0].cuda(), targets[1].cuda()
-        
-        batch_time.update(time.time() - end)
-        end = time.time()
-        
-        if torch.max(base_A_matrix) < 1 and torch.max(moment_A_matrix) < 1:
-            continue
         
         yi, xj_moment = model(images[0], images[1])
         yj, xi_moment = model(images[1], images[0])
 
-        pixpro_loss = PixproLoss(args)
-        overall_loss = pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix)
+        if args.loss == 'pixpro':         
+            base_A_matrix, moment_A_matrix = targets[0].cuda(args.gpu), targets[1].cuda(args.gpu)
+            pixpro_loss = PixproLoss(args)
+            overall_loss = pixpro_loss(yi, xj_moment, base_A_matrix) + pixpro_loss(yj, xi_moment, moment_A_matrix)
+        
+        elif args.loss == 'pixcontrast':
+            base_A_matrix, moment_A_matrix = targets[0][0].cuda(args.gpu), targets[0][1].cuda(args.gpu)
+            base_inter_mask, moment_inter_mask = targets[1][0].cuda(args.gpu), targets[1][1].cuda(args.gpu)
+
+            pixcontrast_loss = PixContrastLoss(args)
+            overall_loss = (pixcontrast_loss(yi, xj_moment, base_A_matrix, base_inter_mask) 
+                            + pixcontrast_loss(yj, xi_moment, moment_A_matrix, moment_inter_mask)) / 2
+        else:
+            ValueError('HAVE TO SELECT PROPER LOSS TYPE')
+
+        if torch.max(base_A_matrix) < 1 and torch.max(moment_A_matrix) < 1:
+            continue
 
         losses.update(overall_loss.item(), images[0].size(0))
-        
+        for param_group in optimizer.param_groups:
+            cur_lr = param_group['lr']
+        lr.update(cur_lr) 
         optimizer.zero_grad()
         overall_loss.backward()
         optimizer.step()
+        
+        batch_time.update(time.time() - end)
+        end = time.time()
 
-        if (_iter % args.print_freq == 0):
+        if (_iter % args.print_freq == 0) and (args.gpu==0):
             progress.display(_iter)
+            writer.add_scalar('Loss', overall_loss.item(), (epoch*len(loader))+_iter)
+            writer.add_scalar('lr', cur_lr, (epoch*len(loader))+_iter)
+
 
 def adjust_lr(optimizer, epoch, args):
     lr = args.lr

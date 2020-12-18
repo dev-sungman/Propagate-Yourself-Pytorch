@@ -83,8 +83,17 @@ class PixProDataset(Dataset):
          
         base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base) 
         moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment)
+        
+        if self.args.loss == 'pixpro':
+            return (sample1, sample2), (base_A_matrix, moment_A_matrix)
+        
+        else:
+            inter_rect = self._get_intersection_rect((x1, y1, w1, h1), (x2, y2, w2, h2))
 
-        return (sample1, sample2), (base_A_matrix, moment_A_matrix)
+            base_inter_mask = self._get_intersection_mask(base_matrix, inter_rect)
+            moment_inter_mask = self._get_intersection_mask(moment_matrix, inter_rect)
+            
+            return (sample1, sample2), ((base_A_matrix, moment_A_matrix), (base_inter_mask, moment_inter_mask))
 
     def _warp_affine(self, p, size=7):
         """
@@ -95,10 +104,40 @@ class PixProDataset(Dataset):
         x, y, w, h = p
         
         matrix = torch.zeros((size, size, 2))
-        matrix[:, :, 0] = torch.stack([torch.linspace(x, x+w, size)]*size, 1)
-        matrix[:, :, 1] = torch.stack([torch.linspace(y, y+h, size)]*size, 0)
+        matrix[:, :, 1] = torch.stack([torch.linspace(x, x+w, size)]*size, 0)
+        matrix[:, :, 0] = torch.stack([torch.linspace(y, y+h, size)]*size, 1)
         return matrix
-         
+
+    def _get_intersection_rect(self, p1, p2):
+        """
+        Get intersection rect
+        p1 : base rect
+        p2 : moment rect
+        """
+        x1, y1, w1, h1 = p1
+        x2, y2, w2, h2 = p2
+        
+        x1_c, y1_c = x1+w1/2, y1+h1/2
+        x2_c, y2_c = x2+w2/2, y2+h2/2
+
+        has_intersection = abs((x1_c - x2_c)*2 < (w1+w2)) and abs((y1_c - y2_c)*2 < (h1+h2))
+
+        if has_intersection:
+            xA = max(x1, x2)
+            yA = max(y1, y2)
+            xB = min(x1+w1, x2+w2)
+            yB = min(y1+h1, y2+h2)
+            return torch.FloatTensor(np.array([min(xA, xB), min(yA, yB), max(xA, xB), max(yA, yB)]))
+        else:
+            return torch.FloatTensor(np.array([0, 0, 0, 0]))
+
+    def _get_intersection_mask(self, p, inter_rect):
+        ix1, iy1, ix2, iy2 = inter_rect
+        
+        inter_mask = torch.where((p[:,:,0] >= iy1) & (p[:,:,0] <= iy2) 
+                                    & (p[:,:,1] >= ix1) & (p[:,:,1] <=ix2), 1., 0.)
+        return torch.flatten(inter_mask)
+
     def _get_A_matrix(self, base, moment, point):
         """
         Get A matrix
@@ -153,7 +192,8 @@ if __name__ == '__main__':
     from torch.utils.data import DataLoader
     dataloader = DataLoader(dataset, batch_size=1)
 
-    for (i1,i2), (m1, m2) in dataloader:
+    for (i1,i2), (m1, m2), irect in dataloader:
+        print(irect)
         print('debug')
         raise
 
