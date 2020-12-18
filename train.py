@@ -194,6 +194,9 @@ def train(args, epoch, loader, model, optimizer, writer):
         if (_iter % args.print_freq == 0) and (args.gpu==0):
             progress.display(_iter)
             writer.add_scalar('Loss', overall_loss.item(), (epoch*len(loader))+_iter)
+            for param_group in optimizer.param_groups:
+                cur_lr = param_group['lr']
+            writer.add_scalar('lr', cur_lr, (epoch*len(loader))+_iter)
 
 
 def adjust_lr(optimizer, epoch, args):

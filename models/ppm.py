@@ -43,11 +43,8 @@ class PixelPropagationModule(nn.Module):
         
         vec_sim = self._compute_similarity(x) # B * HW * HW
         
-        tr_x = self.transform_block(x)        # C * H * W
-        tr_x = tr_x.view(b, h*w, c)           # B * HW * C
-
-        y = torch.bmm(vec_sim, tr_x)          # B * HW * C
-        y = y.view(b, c, h, w)                # B * C * H * W
+        tr_x = self.transform_block(x)        # B * C * H * W
+        y = torch.einsum('bhwij, bchw -> bchw', vec_sim, tr_x)
         
         return y
 
