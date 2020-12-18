@@ -17,18 +17,9 @@ class PixelPropagationModule(nn.Module):
         """
         b, c, h, w = x.shape
         
-        x_norm = x.view(b, c*h*w)
-        x_norm = torch.linalg.norm(x_norm, 2, dim=1)
-        # [B] --> [B, 1, 1]
-        x_norm = x_norm.view(-1, 1, 1) 
-
-        x_1 = x.view(b, h*w, c)  # B * HW * C
-        x_1 = x_1 / x_norm
-
-        x_2 = x.view(b, c, h*w)  # B * C * HW
-        x_2 = x_2 / x_norm
-        
-        cos = torch.bmm(x_1, x_2) # B * HW * HW
+        x_1 = x.view(b, c, h, w, 1, 1)
+        x_2 = x.view(b, c, 1, 1, h, w)
+        cos = F.cosine_similarity(x_1, x_2, dim=1) # B * HW * HW
         s = torch.pow(F.relu(cos), self.sharpness)
         return s
 
