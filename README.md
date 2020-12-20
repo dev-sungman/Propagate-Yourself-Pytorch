@@ -3,27 +3,33 @@
 
 
 
-## TODO
-
-- [x] Training with PixContrast Loss
-- [ ] Training with Task Loss
-- [ ] Transfer learning : COCO 
-
-
-
 ## Requirements
 
-* Dockerfile : TBD
+* Using shared image (brain cloud) : Pixpro_pytorch (To be updated) 
+
+* Using pip 
+
+  ```bash
+  pip install -r requirements.txt
+  ```
 
   
 
-## Unsupervised Training 
+## Unsupervised Training (ImageNet-1K)
 
-```python
-python train.py --multiprocessing-distributed --world_size=1 --rank=0 --train_path='$datapath' --batch_size=512
-```
+* PixPro training
 
+  ```bash
+  python train.py --multiprocessing-distributed --batch_size=512 --loss=pixpro
+  ```
 
+* PixContrast training
+
+  ```bash
+  python train.py --multiprocessing-distributed --batch_size=512 --loss=pixcontrast
+  ```
+
+  
 
 ## Models
 
@@ -33,51 +39,54 @@ python train.py --multiprocessing-distributed --world_size=1 --rank=0 --train_pa
 
 ## Transfer learning
 
+### before downstream training
+
+* Make your current directory downstream. 
+
+* Convert a pre-trained PixPro model to detectron2's format:
+
+  ```bash
+  python convert-pretrain-to-detectron2.py '$input.pth.tar' pixpro_voc.pkl
+  ```
+
+  
+
 ### VOC
-* Training Epochs: ~23 epochs (24K iter)
+
+* Training Epochs: 24K iter
+
 * Image size : [480,800] in train, 800 at inference.
+
 * Backbone : R50-C4
 
+* training
 
-
-1. Convert a pre-trained PixPro model to detectron2's format:
-
-   ```bash
-   python downstream/convert-pretrain-to-detectron2.py '$input.pth.tar' pixpro_voc.pkl
-   ```
-
-   
-
-2. Set a path
-
-   ```bash
-   export DETECTRON2_DATASETS=/data/opensets/voc/VOCdevkit
-   ```
-
-   
-
-3. VOC training
-
-   ```bash
-   python downstream/train_downstream.py --config-file downstream/configs/pascal_voc_R_50_C4_24k.yaml --num-gpus 4 MODEL.WEIGHTS downstream/pixpro_voc.pkl
-   ```
-
+  ```bash
+  source train_voc.sh
+  ```
 
 
 
 ### COCO
 
+* Training Epochs: 24K iter
 
+* Image size : [640,800] in train, 800 at inference.
 
-## Evaluation
+* Backbone : R50-C4
 
+* Training
 
+  ```bash
+  source train_coco.sh
+  ```
 
-
+  
 
 ## Results
 
-| pretrain                       | AP50 | AP   | AP75 |
-| ------------------------------ | ---- | ---- | ---- |
-| ImageNet-1M, PixPro, 100epochs |      |      |      |
+|            pretrain            | Downstream |  AP  | AP50 | AP75 |
+| :----------------------------: | :--------: | :--: | :--: | :--: |
+| ImageNet-1M, PixPro, 100epochs |    VOC     |      |      |      |
+| ImageNet-1M, PixPro, 100epochs |    COCO    |      |      |      |
 
