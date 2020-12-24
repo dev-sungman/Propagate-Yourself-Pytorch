@@ -94,6 +94,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int((args.workers + ngpus_per_node -1) / ngpus_per_node)
+            # convert batch norm to sync batch norm
             sync_bn_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
 
@@ -107,9 +108,8 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         raise NotImplementedError('only DDP is supported.')
 
-    #base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    #optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
     writer = SummaryWriter(args.log_dir) 
     if args.resume:
         checkpoint = torch.load(args.resume)
@@ -180,7 +180,8 @@ def train(args, epoch, loader, model, optimizer, writer):
                             + pixcontrast_loss(yj, xi_moment, moment_A_matrix, moment_inter_mask)) / 2
         else:
             ValueError('HAVE TO SELECT PROPER LOSS TYPE')
-
+        
+        # if there is no intersection, skip the update
         if torch.max(base_A_matrix) < 1 and torch.max(moment_A_matrix) < 1:
             continue
 
