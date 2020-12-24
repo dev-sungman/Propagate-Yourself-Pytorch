@@ -4,8 +4,12 @@ import numpy as np
 
 import time
 
-
 def get_cosine_similarity(base, moment, dim=1):
+    """
+    Get cosine distance
+    base : base matrix
+    moment : moment matrix
+    """
     base = base.view(base.shape[0], base.shape[1], 1, -1)
     moment = moment.view(moment.shape[0], moment.shape[1], -1, 1)
 

@@ -35,7 +35,7 @@ def parse_arguments(argv):
     # weight decay
     parser.add_argument('--weight_decay', type=float, default=1e-5)
     # loss weights (for combining with instance contrast)
-    parser.add_argument('--inst_weight', type=int, default=1)
+    parser.add_argument('--inst_weight', type=int, default=1) # NOT USED YET
     parser.add_argument('--workers', type=int, default=48)
     
     ##### Encoder + Projection

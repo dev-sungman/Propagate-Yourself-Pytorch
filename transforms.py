@@ -95,15 +95,6 @@ class RandomResizedCrop(object):
         img = img.resize(self.size)
         return img, j, i, w, h 
 
-class PixProDataTransform(object):
-    def __init__(self, transform):
-        self.transform = transform
-
-    def __call__(self, x):
-        x1 = self.transform(x)
-        x2 = self.transform(x)
-        return x1, x2
-
 ### TEST
 if __name__ == '__main__':
     img = Image.open('testimg.png')
