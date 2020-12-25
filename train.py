@@ -50,6 +50,7 @@ def main(args):
         torch.manual_seed(args.seed)
         cudnn.deterministic = True
     
+    # DDP
     if args.dist_url == 'env://' and args.world_size == -1:
         args.world_size = int(os.environ["WORLD_SIZE"])
 
@@ -94,6 +95,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int((args.workers + ngpus_per_node -1) / ngpus_per_node)
+            # convert batch norm --> sync batch norm
             sync_bn_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
 
@@ -107,9 +109,8 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         raise NotImplementedError('only DDP is supported.')
 
-    #base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    #optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    base_optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = LARS(optimizer=base_optimizer, eps=1e-8)
     writer = SummaryWriter(args.log_dir) 
     if args.resume:
         checkpoint = torch.load(args.resume)
@@ -163,6 +164,7 @@ def train(args, epoch, loader, model, optimizer, writer):
     for _iter, (images, targets) in enumerate(loader):
         images[0], images[1] = images[0].cuda(args.gpu, non_blocking=True), images[1].cuda(args.gpu, non_blocking=True)
         
+        # swap the image
         yi, xj_moment = model(images[0], images[1])
         yj, xi_moment = model(images[1], images[0])
 
