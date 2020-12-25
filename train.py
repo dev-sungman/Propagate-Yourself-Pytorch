@@ -95,7 +95,11 @@ def main_worker(gpu, ngpus_per_node, args):
 
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int((args.workers + ngpus_per_node -1) / ngpus_per_node)
+<<<<<<< HEAD
             # convert batch norm --> sync batch norm
+=======
+            # convert batch norm to sync batch norm
+>>>>>>> 4f2263931a87ec0345c6ac1650595f72a0150f34
             sync_bn_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
 
@@ -182,7 +186,8 @@ def train(args, epoch, loader, model, optimizer, writer):
                             + pixcontrast_loss(yj, xi_moment, moment_A_matrix, moment_inter_mask)) / 2
         else:
             ValueError('HAVE TO SELECT PROPER LOSS TYPE')
-
+        
+        # if there is no intersection, skip the update
         if torch.max(base_A_matrix) < 1 and torch.max(moment_A_matrix) < 1:
             continue
 

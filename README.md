@@ -29,13 +29,8 @@
   python train.py --multiprocessing-distributed --batch_size=512 --loss=pixcontrast
   ```
 
-  
 
-## Models
 
-* ResNet-50 : 
-
-  
 
 ## Transfer learning
 
@@ -46,7 +41,7 @@
 * Convert a pre-trained PixPro model to detectron2's format:
 
   ```bash
-  python convert-pretrain-to-detectron2.py '$input.pth.tar' pixpro_voc.pkl
+  python convert-pretrain-to-detectron2.py '$input.pth.tar' pixpro.pkl
   ```
 
   
@@ -85,8 +80,9 @@
 
 ## Results
 
-|            pretrain            | Downstream |  AP  | AP50 | AP75 |
-| :----------------------------: | :--------: | :--: | :--: | :--: |
-| ImageNet-1M, PixPro, 100epochs |    VOC     |      |      |      |
-| ImageNet-1M, PixPro, 100epochs |    COCO    |      |      |      |
+|              pretrain               | Downstream |  AP   | AP50  | AP75  |
+| :---------------------------------: | :--------: | :---: | :---: | :---: |
+|   ImageNet-1M, PixPro, 100epochs    |    VOC     | 54.11 | 79.75 | 59.73 |
+| ImageNet-1M, PixContrast, 100epochs |    VOC     | 52.23 | 78.01 | 57.85 |
+|   ImageNet-1M, PixPro, 100epochs    |    COCO    |       |       |       |
 

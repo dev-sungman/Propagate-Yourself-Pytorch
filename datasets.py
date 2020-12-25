@@ -76,14 +76,18 @@ class PixProDataset(Dataset):
         base_matrix = self._warp_affine(p_base)     
         moment_matrix = self._warp_affine(p_moment) 
         
+        # If image is fliped, have to flip position matrix
         if f_base.item() > 0:
             base_matrix = torch.fliplr(base_matrix)
         if f_moment.item() > 0:
             moment_matrix = torch.fliplr(moment_matrix)
-         
+        
+        # Get normalized distance matrix (positive, negative pair)
         base_A_matrix = self._get_A_matrix(base_matrix, moment_matrix, p_base) 
         moment_A_matrix = self._get_A_matrix(moment_matrix, base_matrix, p_moment)
         
+        # If the loss function is pixpro, just use feautres, A_matrix.
+        # However, if the loss function is pixcontrast, we use featreus, A_matrix, intersection mask
         if self.args.loss == 'pixpro':
             return (sample1, sample2), (base_A_matrix, moment_A_matrix)
         
@@ -94,10 +98,10 @@ class PixProDataset(Dataset):
             moment_inter_mask = self._get_intersection_mask(moment_matrix, inter_rect)
             
             return (sample1, sample2), ((base_A_matrix, moment_A_matrix), (base_inter_mask, moment_inter_mask))
-
+    
     def _warp_affine(self, p, size=7):
         """
-        Get warped matrix
+        Get warped matrix (make 7x7 position matrix)
         p : feature map (base)
         size : cropped position in original image space (base)
         """
@@ -107,7 +111,7 @@ class PixProDataset(Dataset):
         matrix[:, :, 1] = torch.stack([torch.linspace(x, x+w, size)]*size, 0)
         matrix[:, :, 0] = torch.stack([torch.linspace(y, y+h, size)]*size, 1)
         return matrix
-
+    
     def _get_intersection_rect(self, p1, p2):
         """
         Get intersection rect
@@ -132,7 +136,11 @@ class PixProDataset(Dataset):
             return torch.FloatTensor(np.array([0, 0, 0, 0]))
 
     def _get_intersection_mask(self, p, inter_rect):
-        ix1, iy1, ix2, iy2 = inter_rect
+        """
+        Get intersection mask
+        p : position matrix
+        inter_rect : intersection rect's position
+        """
         
         inter_mask = torch.where((p[:,:,0] >= iy1) & (p[:,:,0] <= iy2) 
                                     & (p[:,:,1] >= ix1) & (p[:,:,1] <=ix2), 1., 0.)
