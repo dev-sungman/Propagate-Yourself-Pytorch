@@ -5,7 +5,7 @@
 
 ## Requirements
 
-* Using shared image (brain cloud) : Pixpro_release
+* Using shared image (brain cloud) : Pixpro_Release
 
 * Using CLI
 
