@@ -20,7 +20,6 @@ Cython==0.29.21
 databricks-cli==0.14.1
 dataclasses==0.6
 decorator==4.4.2
-detectron2==0.3+cu101
 docker==4.4.0
 entrypoints==0.3
 filelock==3.0.12
@@ -102,7 +101,6 @@ tensorboard==2.4.0
 tensorboard-plugin-wit==1.7.0
 tensorboardX==2.1
 termcolor==1.1.0
-torch==1.7.0
 torchaudio==0.7.0a0+ac17b64
 torchlars==0.1.2
 torchvision==0.8.1
