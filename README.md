@@ -3,16 +3,25 @@
 
 
 
-## Requirements
+## Weights, Files
 
-* Using shared image (brain cloud) : Pixpro_Release
+* pretrained weights, and files are located in '/data/private'
 
-* Using CLI
+
+
+## Environment Settings
+
+* Shared image (brain cloud)
+
+  * Use Pixpro_Release
+
+* CLI
 
   ```bash
+  git clone https://github.com/Sungman-Cho/kakaobrain-homework.git
   source install_packages.sh
-  ```
-
+```
+  
   
 
 ## Unsupervised Training (ImageNet-1K)
@@ -36,18 +45,18 @@
 
 ### before downstream training
 
-* Make your current directory downstream. 
+* Make your current directory 'downstream'. 
 
 * Convert a pre-trained PixPro model to detectron2's format:
 
   ```bash
-  python convert-pretrain-to-detectron2.py '$input.pth.tar' pixpro.pkl
+  python convert-pretrain-to-detectron2.py '$your_checkpoint.pth.tar' pixpro.pkl
   ```
 
 * Convert a pre-trained Pixcontrast model to detectorn2's format:
 
   ```bash
-  python convert-pretrain-to-detectron2.py '$input.pth.tar' pixcontrast.pkl
+  python convert-pretrain-to-detectron2.py '$your_checkpoint.pth.tar' pixcontrast.pkl
   ```
 
 
@@ -61,13 +70,15 @@
 
 * Backbone : R50-C4
 
-* training
+* Training
 
   ```bash
   # baseline training
   source train_voc_base.sh
+  
   # pixpro training
   source train_voc_pixpro.sh
+  
   # pixcontrast training
   source train_voc_pixcontrast.sh
   ```
@@ -85,8 +96,10 @@
   ```bash
   # baseline training
   source train_coco_base.sh
+  
   # pixpro training
   source train_coco_pixpro.sh
+  
   # pixcontrast training
   source train_coco_pixcontrast.sh
   ```
