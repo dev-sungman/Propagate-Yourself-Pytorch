@@ -1,28 +1,24 @@
 # Kakao brain: Homework
-* paper : https://arixv.org/abs/2011.10043
+* Paper : https://arixv.org/abs/2011.10043
 
+* Pytorch 1.7.0, cuda 10.1
+* Used 4 GPUS (V100) for training.
+  
 
+# Environment Settings
 
-## Weights, Files
+* **Shared image in brain cloud [Recommended]**
 
-* pretrained weights, and files are located in '/data/private'
+  * Use the 'Pixpro_Release' image
 
-
-
-## Environment Settings
-
-* Shared image (brain cloud)
-
-  * Use Pixpro_Release
-
-* CLI
+* **CLI**
 
   ```bash
   git clone https://github.com/Sungman-Cho/kakaobrain-homework.git
   source install_packages.sh
-```
-  
-  
+  ```
+
+
 
 ## Unsupervised Training (ImageNet-1K)
 
@@ -32,20 +28,27 @@
   python train.py --multiprocessing-distributed --batch_size=512 --loss=pixpro
   ```
 
+
 * PixContrast training
 
   ```bash
   python train.py --multiprocessing-distributed --batch_size=512 --loss=pixcontrast
-  ```
+	```
 
 
 
 
 ## Transfer learning
 
-### before downstream training
+### before downstream training 
 
-* Make your current directory 'downstream'. 
+* If you had finished the environment setting by using CLI, you have to do this step. If you used the shared image in the environment setting phase, please skip this phase.
+
+  
+
+* You can find pretrained weights in `/data/public/rw/pixpro-pretrained-weights`
+
+* Make your current directory `downstream`. 
 
 * Convert a pre-trained PixPro model to detectron2's format:
 
