@@ -50,7 +50,8 @@
   python convert-pretrain-to-detectron2.py '$input.pth.tar' pixcontrast.pkl
   ```
 
-  
+
+
 
 ### VOC
 
@@ -84,13 +85,13 @@
   ```bash
   # baseline training
   source train_coco_base.sh
-# pixpro training
+  # pixpro training
   source train_coco_pixpro.sh
   # pixcontrast training
   source train_coco_pixcontrast.sh
   ```
-  
-  
+
+
 
 ## Results
 
@@ -102,10 +103,3 @@
 |   ImageNet-1M, PixPro, 100epochs    | 54.11 | 79.75 | 59.73 |
 | ImageNet-1M, PixContrast, 100epochs | 52.23 | 78.01 | 57.85 |
 
-### COCO
-
-|              pretrain               |  AP  | AP50 | AP75 |
-| :---------------------------------: | :--: | :--: | :--: |
-|              baseline               |      |      |      |
-|   ImageNet-1M, PixPro, 100epochs    |      |      |      |
-| ImageNet-1M, PixContrast, 100epochs |      |      |      |
