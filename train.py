@@ -12,7 +12,7 @@ from models.pixpro import PixPro
 from utils import AverageMeter, ProgressMeter
 from losses import PixproLoss, PixContrastLoss
 from tensorboardX import SummaryWriter
-#from torchlars import LARS
+from torchlars import LARS
 
 import torch
 import torch.nn as nn
@@ -95,11 +95,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int((args.workers + ngpus_per_node -1) / ngpus_per_node)
-<<<<<<< HEAD
+            
             # convert batch norm --> sync batch norm
-=======
-            # convert batch norm to sync batch norm
->>>>>>> 4f2263931a87ec0345c6ac1650595f72a0150f34
             sync_bn_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
 
