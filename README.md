@@ -44,6 +44,12 @@
   python convert-pretrain-to-detectron2.py '$input.pth.tar' pixpro.pkl
   ```
 
+* Convert a pre-trained Pixcontrast model to detectorn2's format:
+
+  ```bash
+  python convert-pretrain-to-detectron2.py '$input.pth.tar' pixcontrast.pkl
+  ```
+
   
 
 ### VOC
@@ -57,32 +63,49 @@
 * training
 
   ```bash
-  source train_voc.sh
+  # baseline training
+  source train_voc_base.sh
+  # pixpro training
+  source train_voc_pixpro.sh
+  # pixcontrast training
+  source train_voc_pixcontrast.sh
   ```
 
 
 
 ### COCO
 
-* Training Epochs: 24K iter
-
-* Image size : [640,800] in train, 800 at inference.
+* Followed 1x settings ([detectron2](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md)) 
 
 * Backbone : R50-C4
 
 * Training
 
   ```bash
-  source train_coco.sh
+  # baseline training
+  source train_coco_base.sh
+# pixpro training
+  source train_coco_pixpro.sh
+  # pixcontrast training
+  source train_coco_pixcontrast.sh
   ```
-
+  
   
 
 ## Results
 
-|              pretrain               | Downstream |  AP   | AP50  | AP75  |
-| :---------------------------------: | :--------: | :---: | :---: | :---: |
-|   ImageNet-1M, PixPro, 100epochs    |    VOC     | 54.11 | 79.75 | 59.73 |
-| ImageNet-1M, PixContrast, 100epochs |    VOC     | 52.23 | 78.01 | 57.85 |
-|   ImageNet-1M, PixPro, 100epochs    |    COCO    |       |       |       |
+### VOC
 
+|              pretrain               |  AP   | AP50  | AP75  |
+| :---------------------------------: | :---: | :---: | :---: |
+|              baseline               |       |       |       |
+|   ImageNet-1M, PixPro, 100epochs    | 54.11 | 79.75 | 59.73 |
+| ImageNet-1M, PixContrast, 100epochs | 52.23 | 78.01 | 57.85 |
+
+### COCO
+
+|              pretrain               |  AP  | AP50 | AP75 |
+| :---------------------------------: | :--: | :--: | :--: |
+|              baseline               |      |      |      |
+|   ImageNet-1M, PixPro, 100epochs    |      |      |      |
+| ImageNet-1M, PixContrast, 100epochs |      |      |      |
