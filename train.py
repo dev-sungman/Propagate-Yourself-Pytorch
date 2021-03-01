@@ -139,6 +139,7 @@ def main_worker(gpu, ngpus_per_node, args):
         adjust_lr(optimizer, epoch, args)
         train(args, epoch, loader, model, optimizer, writer)
 
+
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
             save_name = '{}.pth.tar'.format(epoch)
             save_name = os.path.join(args.checkpoint_dir, save_name)

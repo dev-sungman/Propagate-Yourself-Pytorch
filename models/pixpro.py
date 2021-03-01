@@ -27,7 +27,8 @@ class PixPro(nn.Module):
 
         self.base_encoder = encoder(dim1=dim1, dim2=dim2)
         self.moment_encoder = encoder(dim1=dim1, dim2=dim2)
-        
+        self.epoch = 0
+
         for param_base, param_moment in zip(self.base_encoder.parameters(), self.moment_encoder.parameters()):
             param_moment.data.copy_(param_base.data)
             param_moment.requires_grad = False # do not update
@@ -41,6 +42,7 @@ class PixPro(nn.Module):
         with torch.no_grad():
             self._momentum_update()
             moment = self.moment_encoder(x2)
+            self._momentum_scaling()
 
         return y, moment
 
@@ -50,6 +52,9 @@ class PixPro(nn.Module):
             param_moment.data = param_moment.data * self.m + param_base.data * (1. - self.m)
     
         
+    def _momentum_scaling(self):
+       self.m += (math.sin(math.pi/2 * self.epoch/args.epochs))*(1-self.m)
+       self.epoch += 1
 
 # for test
 if __name__ == '__main__':

@@ -155,7 +155,7 @@ class PixProDataset(Dataset):
         """
         x1, y1, w1, h1 = point
         
-        diag_len = torch.sqrt((w1.float()**2) + (h1.float()**2))
+        diag_len = (torch.sqrt((w1.float()**2) + (h1.float()**2)))/7
         
         A_matrix = self._get_normalized_distance(base, moment, diag_len)
         return A_matrix
