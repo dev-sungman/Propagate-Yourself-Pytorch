@@ -1,20 +1,20 @@
-# Kakao brain: Homework
+# Propagate Yourself
 * Paper : https://arixv.org/abs/2011.10043
-
 * Pytorch 1.7.0, cuda 10.1
 * Used 4 GPUS (V100) for training.
-  
+
+
+
+### TODO:
+
+- [ ] Fix pixcontrast modules 
 
 # Environment Settings
-
-* **Shared image in brain cloud [Recommended]**
-
-  * Use the 'Pixpro_Release' image
 
 * **CLI**
 
   ```bash
-  git clone https://github.com/Sungman-Cho/kakaobrain-homework.git
+  git clone https://github.com/Sungman-Cho/Propagate-Yourself-Pytorch.git
   source install_packages.sh
   ```
 
@@ -42,21 +42,15 @@
 
 ### before downstream training 
 
-* If you had finished the environment setting by using CLI, you have to do this step. If you used the shared image in the environment setting phase, please skip this phase.
-
-  
-
-* You can find pretrained weights in `/data/public/rw/pixpro-pretrained-weights`
-
 * Make your current directory `downstream`. 
 
-* Convert a pre-trained PixPro model to detectron2's format:
+* Convert a trained PixPro model to detectron2's format:
 
   ```bash
   python convert-pretrain-to-detectron2.py '$your_checkpoint.pth.tar' pixpro.pkl
   ```
 
-* Convert a pre-trained Pixcontrast model to detectorn2's format:
+* Convert a trained Pixcontrast model to detectorn2's format:
 
   ```bash
   python convert-pretrain-to-detectron2.py '$your_checkpoint.pth.tar' pixcontrast.pkl
