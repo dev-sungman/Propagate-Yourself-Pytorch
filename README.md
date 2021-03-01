@@ -101,15 +101,3 @@
   source train_coco_pixcontrast.sh
   ```
 
-
-
-## Results
-
-### VOC
-
-|              pretrain               |    AP     |   AP50    |   AP75    |
-| :---------------------------------: | :-------: | :-------: | :-------: |
-|              baseline               |   53.26   | **81.17** |   58.65   |
-|   ImageNet-1M, PixPro, 100epochs    | **54.11** |   79.75   | **59.73** |
-| ImageNet-1M, PixContrast, 100epochs |   52.23   |   78.01   |   57.85   |
-
