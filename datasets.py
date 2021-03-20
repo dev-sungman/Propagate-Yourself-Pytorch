@@ -179,7 +179,7 @@ class PixProDataset(Dataset):
         dist_x_matrix = torch.mm(base_x_matrix.view(-1,1), torch.ones((1,size))) - torch.mm(torch.ones((size,1)), moment_x_matrix.view(1,-1))
         dist_y_matrix = torch.mm(base_y_matrix.view(-1,1), torch.ones((1,size))) - torch.mm(torch.ones((size,1)), moment_y_matrix.view(1,-1))
         
-        dist_matrix = torch.sqrt(dist_x_matrix**2 + dist_y_matrix**2) / diaglen
+        dist_matrix = torch.sqrt(dist_x_matrix**2 + dist_y_matrix**2) / (diaglen/7)
         A_matrix = torch.zeros((dist_matrix.shape))
         A_matrix[dist_matrix < self.args.threshold] = 1.
         A_matrix[dist_matrix >= self.args.threshold] = 0.
