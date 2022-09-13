@@ -141,7 +141,7 @@ class PixProDataset(Dataset):
         p : position matrix
         inter_rect : intersection rect's position
         """
-        
+        ix1, ix2, iy1, iy2 = inter_rect    
         inter_mask = torch.where((p[:,:,0] >= iy1) & (p[:,:,0] <= iy2) 
                                     & (p[:,:,1] >= ix1) & (p[:,:,1] <=ix2), 1., 0.)
         return torch.flatten(inter_mask)
